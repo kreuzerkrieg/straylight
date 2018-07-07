@@ -32,7 +32,7 @@
 // CUDA doesn't have double-precision textures, but we emulate them
 // using textures of int2 - and a conversion function.
 
-#include "sm_13_double_functions.h"
+#include "device_double_functions.h"
 
 texture<int2, 1, cudaReadModeElementType>       g_cudaMainMatrixTexture;
 texture<int2, 1, cudaReadModeElementType>       g_cudaMainKernelTexture;
@@ -75,11 +75,11 @@ __global__ void DoWork(fp *cudaOutputImage/*, int inX, int inY, int kX, int kY*/
 
             //sum += input_image_corrected_line[ofsX]*psf_high_res_line[l];
 #ifdef USE_DOUBLEPRECISION
-            sum += 
-                fetch_double(g_cudaMainMatrixTexture, input_image_corrected_line_Offset + ofsX)
-                *
-                fetch_double(g_cudaMainKernelTexture, psf_high_res_line_Offset + l);
-            
+			int2 v1 = tex1Dfetch(g_cudaMainMatrixTexture, input_image_corrected_line_Offset + ofsX);
+			double d1 = __hiloint2double(v1.y, v1.x);
+			int2 v2 = tex1Dfetch(g_cudaMainKernelTexture, psf_high_res_line_Offset + l);
+			double d2 = __hiloint2double(v2.y, v2.x);
+			sum += d1 * d2;
 #else
             sum += 
                 tex1Dfetch(g_cudaMainMatrixTexture, input_image_corrected_line_Offset + ofsX).x
