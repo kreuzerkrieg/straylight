@@ -4,7 +4,7 @@ project(StrayLight)
 set(CMAKE_CXX_STANDARD 17)
 set(SOURCES
         src/main.cpp
-        #        src/config.h
+        src/config.h
         src/configStraylight.h
         src/forward_model_single_psf_dual_resolution.cpp
         src/forward_model_single_psf_dual_resolution.h
@@ -21,6 +21,7 @@ set(SOURCES
 add_compile_options(
         -fopenmp
 )
+add_definitions(-DUSE_DOUBLEPRECISION)
 add_executable(StrayLight
         ${SOURCES}
         )
