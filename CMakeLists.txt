@@ -70,3 +70,36 @@ TARGET_LINK_LIBRARIES(StrayLightFull
         -fopenmp
         rt
         )
+
+set(MODERNIZED_SOURCES
+        src/Modernize/main.cpp
+        src/Modernize/config.h
+        src/Modernize/configStraylight.h
+        src/Modernize/forward_model_single_psf_dual_resolution.cpp
+        src/Modernize/forward_model_single_psf_dual_resolution.h
+        src/Modernize/harvey_brdf.cpp
+        src/Modernize/harvey_brdf.h
+        src/Modernize/harvey_psf.cpp
+        src/Modernize/harvey_psf.h
+        src/Modernize/particulate_contamination_harvey_psf.cpp
+        src/Modernize/particulate_contamination_harvey_psf.h
+        src/Modernize/tis_surface_scattering_harvey.cpp
+        src/Modernize/tis_surface_scattering_harvey.h
+        src/Modernize/utilities.cpp
+        src/Modernize/utilities.h src/Modernize/Matrices.cpp src/Modernize/Matrices.h)
+add_definitions(-DUSE_DOUBLEPRECISION)
+add_executable(ModernStrayLight
+        ${MODERNIZED_SOURCES}
+        )
+
+SET_TARGET_PROPERTIES(ModernStrayLight
+        PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+        )
+
+TARGET_LINK_LIBRARIES(ModernStrayLight
+        fftw3
+        rt
+        )
