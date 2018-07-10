@@ -1,6 +1,5 @@
 #pragma once
 
-#include "configStraylight.h"
 #include "Matrices.h"
 
 void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matrix2D& input_image, bool logStages = false);

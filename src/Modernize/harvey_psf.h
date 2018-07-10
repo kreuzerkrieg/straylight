@@ -15,18 +15,9 @@
 
 */
 
-#ifndef __harvey_psf_h__
-#define __harvey_psf_h__
+#pragma once
 
-#include "configStraylight.h"
+#include "Matrices.h"
 
-void harvey_psf(
-    m2d& psf,
-    m2d& radius,
-    int channel,
-    fp surface_roughness_mirror1,
-    fp surface_roughness_mirror2,
-    fp surface_roughness_mirror3,
-    bool INCIDENCE_ANGLE_CENTER_FOV = false);
-
-#endif
+void harvey_psf(Matrix2D& psf, Matrix2D& radius, int channel, fp surface_roughness_mirror1, fp surface_roughness_mirror2,
+				fp surface_roughness_mirror3, bool INCIDENCE_ANGLE_CENTER_FOV = false);

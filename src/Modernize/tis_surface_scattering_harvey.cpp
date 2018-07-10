@@ -119,7 +119,7 @@ fp tis_surface_scattering_harvey(int channel, fp theta0, fp s_rough_mirror, bool
 	debug_printf(LVL_WARN, "Untested code, (Line %d in %s)\n", __LINE__, __FILE__);
 
 	// Integration step
-	int nb_points=1200.; // 600 is a good values to get the fwd models to run reasonnably fast but not completely accurate
+	int nb_points=1200.; // 600 is a good values to get the fwd models to run reasonably fast but not completely accurate
 	
 	// compute the TIS for a normal incident angle
 	fp TIS_6nm = 0.;

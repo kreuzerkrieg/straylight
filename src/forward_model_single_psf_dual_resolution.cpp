@@ -130,7 +130,6 @@ typedef Eigen::Matrix<fp, IMGHEIGHT, IMGWIDTH, Eigen::RowMajor>      m2dSpecialI
 // Neither Eigen nor CUDA - use the simple m2d typedef 
 // from configStraylight.h for the two convolution types.
 
-typedef m2d m2dSpecialPSF;
 typedef m2d m2dSpecialImage;
 
 #endif // USE_EIGEN

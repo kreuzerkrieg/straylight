@@ -14,16 +14,10 @@
  `----------------------------------------------------------'
 
 */
+#pragma once
 
-#ifndef __HARVEY_BRDF_H__
-#define __HARVEY_BRDF_H__
-
-#include "configStraylight.h"
+#include "Matrices.h"
 
 fp harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l, fp m, fp n);
-void harvey_brdf(
-    m2d& result,
-    m2d& thetaArg, 
-    fp theta0, fp b, fp s, fp l, fp m, fp n);
 
-#endif
+void harvey_brdf(Matrix2D& result, Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n);

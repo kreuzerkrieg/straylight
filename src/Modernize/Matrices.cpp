@@ -31,3 +31,9 @@ Matrix2D::data& Matrix2D::get()
 const Matrix2D::data& Matrix2D::get() const
 { return m_data; }
 
+const double& Matrix2D::operator[](size_t pos) const
+{ return m_data[pos]; }
+
+double& Matrix2D::operator[](size_t pos)
+{ return m_data[pos]; }
+

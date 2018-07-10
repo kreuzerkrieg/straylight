@@ -63,4 +63,3 @@ constexpr fp AC_nb_detectors = IMGWIDTH;
 //AL_nb_detectors = 2.*tan(alpha_AL_max*M_PI/180.)*focal/SWIR_detector_size;
 //AC_nb_detectors = 2.*tan(alpha_AC_max*M_PI/180.)*focal/SWIR_detector_size;
 //}
-

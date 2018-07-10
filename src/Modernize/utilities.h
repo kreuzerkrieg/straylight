@@ -14,23 +14,19 @@
  `----------------------------------------------------------'
 
 */
+#pragma once
 
-#ifndef __DEBUG_MESSAGES_H__
-#define __DEBUG_MESSAGES_H__
-
-#include <stdarg.h>
+#include <cstdarg>
 
 // debug_printf is used for logging and error reporting
 //
-enum DebugLevel {
-    LVL_PANIC=0,
-    LVL_WARN,
-    LVL_INFO
+enum DebugLevel
+{
+	LVL_PANIC = 0, LVL_WARN, LVL_INFO
 };
 
 extern DebugLevel g_debugLevel;
 
 long getTimeInMS();
-void debug_printf(DebugLevel level, const char *fmt, ...);
 
-#endif
+void debug_printf(DebugLevel level, const char* fmt, ...);

@@ -15,10 +15,10 @@
 
 */
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <time.h>
+#include <cstdio>
+#include <cstdarg>
+#include <cstdlib>
+#include <ctime>
 
 #include "utilities.h"
 
@@ -28,24 +28,24 @@ DebugLevel g_debugLevel = LVL_WARN;
 
 long getTimeInMS()
 {
-    struct timespec ts;
-    clock_gettime( CLOCK_REALTIME, &ts );
-    return ts.tv_sec*1000UL+ts.tv_nsec/1000000UL;
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL;
 }
 
-void debug_printf(DebugLevel level, const char *fmt, ...)
+void debug_printf(DebugLevel level, const char* fmt, ...)
 {
-    static char message[131072];
+	static char message[131072];
 
-    if (level <= g_debugLevel) {
-	va_list ap;
-	va_start(ap, fmt);
-	vsnprintf(message, sizeof message, fmt, ap);
-	printf(message);
-	va_end(ap);
-    }
-    if (level == LVL_PANIC) {
-        fflush(stdout);
-	exit(1);
-    }
+	if (level <= g_debugLevel) {
+		va_list ap;
+		va_start(ap, fmt);
+		vsnprintf(message, sizeof message, fmt, ap);
+		printf(message);
+		va_end(ap);
+	}
+	if (level == LVL_PANIC) {
+		fflush(stdout);
+		exit(1);
+	}
 }

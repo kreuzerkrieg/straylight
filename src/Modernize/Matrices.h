@@ -64,17 +64,13 @@ public:
 
 	const data& get() const;
 
-	const_reference operator()(int y, int x) const;
-
 	Matrix2D(size_t width, size_t height);
 
 	Matrix2D(size_t width, size_t height, fp value);
 
-	reference operator[](size_t pos)
-	{ return m_data[pos]; }
+	reference operator[](size_t pos);
 
-	const_reference operator[](size_t pos) const
-	{ return m_data[pos]; }
+	const_reference operator[](size_t pos) const;
 
 	void reset();
 	/*iterator begin() noexcept { return m_data.begin(); }

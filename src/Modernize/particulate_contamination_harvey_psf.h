@@ -15,11 +15,8 @@
 
 */
 
-#ifndef __particulate_contamination_harvey_psf_h__
-#define __particulate_contamination_harvey_psf_h__
+#pragma  once
 
-#include "configStraylight.h"
+#include "Matrices.h"
 
-void particulate_contamination_harvey_psf(m2d& psf_mirror_dust, m2d& radius, int channel);
-
-#endif
+void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& radius, int channel);

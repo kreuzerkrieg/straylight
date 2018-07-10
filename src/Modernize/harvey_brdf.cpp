@@ -15,7 +15,7 @@
 
 */
 
-#include <math.h>
+#include <cmath>
 
 #include "harvey_brdf.h"
 
@@ -23,28 +23,22 @@ using namespace std;
 
 fp harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l, fp m, fp n)
 {
-    fp g_harvey=0.5*(cos(theta)+cos(theta0));
-    fp f_harvey=sqrt(1.0+pow(((sin(theta)-sin(theta0))/l/pow(g_harvey,n)),2));
+	fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
+	fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
 
-    return b*pow(f_harvey,s)/pow(g_harvey,m);
+	return b * pow(f_harvey, s) / pow(g_harvey, m);
 }
 
-void harvey_brdf(
-    m2d& result,
-    m2d& thetaArg, 
-    fp theta0, fp b, fp s, fp l, fp m, fp n)
+void harvey_brdf(Matrix2D& result, Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n)
 {
-    result.reset();
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-    for(int i=0; i<thetaArg._height; i++) {
-	for(int j=0; j<thetaArg._width; j++) {
-	    fp theta = thetaArg(i,j);
-	    fp g_harvey=0.5*(cos(theta)+cos(theta0));
-	    fp f_harvey=sqrt(1.0+pow(((sin(theta)-sin(theta0))/l/pow(g_harvey,n)),2));
+	result.reset();
+	for (int i = 0; i < thetaArg.height; i++) {
+		for (int j = 0; j < thetaArg.width; j++) {
+			fp theta = thetaArg(i, j);
+			fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
+			fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
 
-	    result(i,j) = b*pow(f_harvey,s)/pow(g_harvey,m);
+			result(i, j) = b * pow(f_harvey, s) / pow(g_harvey, m);
+		}
 	}
-    }
 }
