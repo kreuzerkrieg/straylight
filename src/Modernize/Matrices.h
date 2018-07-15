@@ -64,6 +64,8 @@ public:
 
 	const data& get() const;
 
+	reference getLine(int y);
+
 	Matrix2D(size_t width, size_t height);
 
 	Matrix2D(size_t width, size_t height, fp value);

@@ -44,7 +44,6 @@
 #include "utilities.h"
 #include "Matrices.h"
 
-
 using m2dSpecialPSF = Matrix2D;
 using m2dSpecialImage=Matrix2D;
 
@@ -74,7 +73,7 @@ void emitStateDuration(int stage)
 // INTERPOL IDL function: C++ implementation for odd-sized arrays
 //
 //////////////////////////////////////////////////////////////////////////////
-void interpol(fp* result, const fp* y, const fp* x, int size, const fp* newX, int newSize)
+void interpol(fp* result, const fp* y, const Matrix1D& x, int size, const Matrix1D& newX, int newSize)
 {
 	int i, j, last = size - 1, outIdx = 0;
 
@@ -265,8 +264,8 @@ void dumpVector(int stageNo, int channelId, const T* v, int vsize, bool scientif
 // In moving code outside forward_model_single_psf_dual_resolution and
 // into this 'calculatePSF', I am hacking image dimensions to macros
 // (for loop unrolling - speed matters!)
-#define image_dim_x IMGWIDTH
-#define image_dim_y IMGHEIGHT
+#define image_dim_x sc::IMGWIDTH
+#define image_dim_y sc::IMGHEIGHT
 
 Matrix1D g_correction_direct_peak(image_dim_x);
 int g_extended_image_dim_x = 0;
@@ -331,10 +330,10 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 				i_angles_center_FOV[2] * M_PI / 180.;
 	}
 
-	emitStateDuration(1);
+	/*emitStateDuration(1);
 	dumpVector(1, channel, (fp*) theta0_M1, image_dim_x);
 	dumpVector(1, channel, (fp*) theta0_M2, image_dim_x);
-	dumpVector(1, channel, (fp*) theta0_M3, image_dim_x);
+	dumpVector(1, channel, (fp*) theta0_M3, image_dim_x);*/
 
 	//# Computation of TIS
 	//#
@@ -368,14 +367,14 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		//# Next we resample to the all the incidence angles
 
 		fp TIS_subsampled[3];
-		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M1_downto_3, 3, surface_roughness_M1);
-		interpol(TIS_surface_roughness_across_track.getLine(0), TIS_subsampled, theta0_M1_downto_3, 3, theta0_M1, image_dim_x);
+		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M1_downto_3, surface_roughness_M1);
+		interpol(&TIS_surface_roughness_across_track.getLine(0), TIS_subsampled, theta0_M1_downto_3, 3, theta0_M1, image_dim_x);
 
-		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M2_downto_3, 3, surface_roughness_M2);
-		interpol(TIS_surface_roughness_across_track.getLine(1), TIS_subsampled, theta0_M2_downto_3, 3, theta0_M2, image_dim_x);
+		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M2_downto_3, surface_roughness_M2);
+		interpol(&TIS_surface_roughness_across_track.getLine(1), TIS_subsampled, theta0_M2_downto_3, 3, theta0_M2, image_dim_x);
 
-		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M3_downto_3, 3, surface_roughness_M3);
-		interpol(TIS_surface_roughness_across_track.getLine(2), TIS_subsampled, theta0_M3_downto_3, 3, theta0_M3, image_dim_x);
+		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M3_downto_3, surface_roughness_M3);
+		interpol(&TIS_surface_roughness_across_track.getLine(2), TIS_subsampled, theta0_M3_downto_3, 3, theta0_M3, image_dim_x);
 	}
 	else {
 		//# We do here the brute force approach: to each incidence angle we compute the TIS
@@ -385,10 +384,10 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		//#TIS_surface_roughness_across_track[*,2]=tis_surface_scattering_harvey(channel,theta0_M3 , surface_roughness_M3)
 	}
 
-	emitStateDuration(2);
+	/*emitStateDuration(2);
 	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(0), image_dim_x);
 	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(1), image_dim_x);
-	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(2), image_dim_x);
+	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(2), image_dim_x);*/
 
 	//#  Define an array where we store thethe TIS in the center of the FOV on each mirror are stored
 	fp TIS_surface_roughness_center_FOV[3];
@@ -487,7 +486,9 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 	//# pix_coordinate[*,*,1]=transpose(indgen(2*image_dim_y-1)#transpose((intarr(2*image_dim_x-1)+1)))
 	//# radius=sqrt((pix_coordinate[*,*,0]-image_dim_x+1)^2+(pix_coordinate[*,*,1]-image_dim_y+1)^2)
 
-	std::vector<Matrix2D> pix_coordinate {2, {g_extended_image_dim_y, g_extended_image_dim_x}};
+	std::vector<Matrix2D> pix_coordinate;
+	pix_coordinate.emplace_back(g_extended_image_dim_y, g_extended_image_dim_x);
+	pix_coordinate.emplace_back(g_extended_image_dim_y, g_extended_image_dim_x);
 
 	for (int i = 0; i < g_extended_image_dim_y; i++) {
 		for (int j = 0; j < g_extended_image_dim_x; j++) {
@@ -496,14 +497,14 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		}
 	}
 
-	emitStateDuration(6);
+	/*emitStateDuration(6);
 	for (int i = 0; i < g_extended_image_dim_y; i++) {
 		dumpVector(6, channel, pix_coordinate[0].getLine(i), g_extended_image_dim_x);
 	}
 	dumpNewline(6, channel);
 	for (int i = 0; i < g_extended_image_dim_y; i++) {
 		dumpVector(6, channel, pix_coordinate[1].getLine(i), g_extended_image_dim_x);
-	}
+	}*/
 
 	Matrix2D radius(g_extended_image_dim_y, g_extended_image_dim_x);
 
@@ -520,10 +521,10 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 	Matrix2D psf_mirror_harvey(g_extended_image_dim_y, g_extended_image_dim_x);
 	harvey_psf(psf_mirror_harvey, radius, channel, surface_roughness_M1, surface_roughness_M2, surface_roughness_M3, true);
 
-	emitStateDuration(7);
+	/*emitStateDuration(7);
 	for (int i = 0; i < g_extended_image_dim_y; i++) {
 		dumpVector(7, channel, psf_mirror_harvey.getLine(i), g_extended_image_dim_x, true);
-	}
+	}*/
 
 	//#  Compute the Mie scattering due to particulate contamination psf for the 3 mirrors
 	Matrix2D psf_mirror_dust(g_extended_image_dim_y, g_extended_image_dim_x);
@@ -531,7 +532,7 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		particulate_contamination_harvey_psf(psf_mirror_dust, radius, channel);
 	}
 	else {
-		assert(psf_mirror_harvey._height == g_extended_image_dim_y);
+		assert(psf_mirror_harvey.height == g_extended_image_dim_y);
 		for (int i = 0; i < g_extended_image_dim_y; i++) {
 			for (int j = 0; j < g_extended_image_dim_x; j++) {
 				psf_mirror_dust(i, j) = (radius(i, j) == 0.) ? 1. : 0.;
@@ -539,8 +540,8 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		}
 	}
 
-	assert(psf_mirror_harvey._height == psf_mirror_dust._height);
-	assert(psf_mirror_harvey._width == psf_mirror_dust._width);
+	assert(psf_mirror_harvey.height == psf_mirror_dust.height);
+	assert(psf_mirror_harvey.width == psf_mirror_dust.width);
 
 	Matrix2D psf_totale(g_extended_image_dim_y, g_extended_image_dim_x);
 
@@ -557,10 +558,10 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		}
 	}
 
-	emitStateDuration(8);
+	/*emitStateDuration(8);
 	for (int i = 0; i < g_extended_image_dim_y; i++) {
 		dumpVector(8, channel, psf_totale.getLine(i), g_extended_image_dim_x, true);
-	}
+	}*/
 
 	//#  Define the high res psf
 #ifndef USE_PSFCACHE
@@ -640,10 +641,7 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 
 }
 
-void
-forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, int channel, fp surface_roughness_M1, fp surface_roughness_M2,
-										 fp surface_roughness_M3, int ppm_dust, fp pupil_stop, bool /* swir_ghost */,   // unused for now
-										 bool logStages)
+void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matrix2D& input_image, int channel, bool logStages)
 {
 	// for iterations
 	int i, j, k, l;
@@ -658,17 +656,17 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 		oldChannel = channel;
 #endif // USE_PSFCACHE
 
-		calculatePSF(channel, surface_roughness_M1, surface_roughness_M2, surface_roughness_M3, ppm_dust);
+		calculatePSF(channel, sc::surf_rough_M1, sc::surf_rough_M2, sc::surf_rough_M3, sc::dust_ppm);
 #ifdef USE_PSFCACHE
 	}
 	else {
 		debug_printf(LVL_INFO, "Re-using PSF cache...\n");
 	}
 
-	if (image_dim_y != input_image._height || image_dim_x != input_image._width) {
+	if (image_dim_y != input_image.height || image_dim_x != input_image.width) {
 		debug_printf(LVL_PANIC, "forward_model_single_psf_dual_resolution violated the contract!\n"
-								"It was called with input image size %dx%d instead of %dx%d - aborting...\n", input_image._width,
-					 input_image._height, IMGWIDTH, IMGHEIGHT);
+								"It was called with input image size %dx%d instead of %dx%d - aborting...\n", input_image.width,
+					 input_image.height, sc::IMGWIDTH, sc::IMGHEIGHT);
 	}
 #endif // USE_PSFCACHE
 
@@ -685,7 +683,7 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 	//for(int i_y=0; i_y<image_dim_y; i_y++)
 	//    dumpVector(91, channel, input_image_corrected.getLine(i_y), image_dim_x);
 
-	static m2d input_extended_image(g_extended_image_dim_y, g_extended_image_dim_x);
+	static Matrix2D input_extended_image(g_extended_image_dim_y, g_extended_image_dim_x);
 
 	for (i = image_dim_y + g_cpt_dim_y / 2; i <= 2 * image_dim_y - 1 + g_cpt_dim_y / 2; i++) {
 		for (int j = image_dim_x + g_cpt_dim_x / 2; j <= 2 * image_dim_x - 1 + g_cpt_dim_x / 2; j++) {
@@ -735,22 +733,23 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 
 	int inY = image_dim_y;
 	int inX = image_dim_x;
-	if (inX != IMGWIDTH || inY != IMGHEIGHT) {
+	if (inX != sc::IMGWIDTH || inY != sc::IMGHEIGHT) {
 		debug_printf(LVL_PANIC, "forward_model_single_psf_dual_resolution violated the contract!\n"
-								"It ends up with an input image of %dx%d instead of %dx%d! Aborting...\n", inX, inY, IMGWIDTH, IMGHEIGHT);
+								"It ends up with an input image of %dx%d instead of %dx%d! Aborting...\n", inX, inY, sc::IMGWIDTH,
+					 sc::IMGHEIGHT);
 	}
 
 	// Using constants instead of kX and kY causes tremendous speed difference - due to loop unrolling!
 	int kY = g_psf_extent;
 	int kX = g_psf_extent;
-	if (kX != KERNEL_SIZE || kY != KERNEL_SIZE) {
+	if (kX != sc::KERNEL_SIZE || kY != sc::KERNEL_SIZE) {
 		debug_printf(LVL_PANIC, "forward_model_single_psf_dual_resolution violated the contract!\n"
-								"It ends up with a pfs_high_res of %dx%d instead of %dx%d! Aborting...\n", kX, kY, KERNEL_SIZE,
-					 KERNEL_SIZE);
+								"It ends up with a pfs_high_res of %dx%d instead of %dx%d! Aborting...\n", kX, kY, sc::KERNEL_SIZE,
+					 sc::KERNEL_SIZE);
 	}
 	// Ugly hack - but I may need to revert to normal vars in the future, so this will do.
-#define kX KERNEL_SIZE
-#define kY KERNEL_SIZE
+#define kX sc::KERNEL_SIZE
+#define kY sc::KERNEL_SIZE
 
 	Matrix2D high_res_output_image(inY, inX);
 
@@ -759,7 +758,7 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 		if (sY >= inY) {
 			sY -= inY;
 		}
-		fp* high_res_output_image_line = high_res_output_image.getLine(sY);
+		fp* high_res_output_image_line = &high_res_output_image.getLine(sY);
 		for (j = 0; j < inX; j++) {
 			fp sum = 0.;
 			for (k = 0; k < kY; k++) {
@@ -767,8 +766,8 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 				if (ofsY >= inY) {
 					ofsY -= inY;
 				}
-				fp* input_image_corrected_line = input_image_corrected.getLine(ofsY);
-				fp* psf_high_res_line = g_psf_high_res->getLine(k);
+				fp* input_image_corrected_line = &input_image_corrected.getLine(ofsY);
+				fp* psf_high_res_line = &g_psf_high_res->getLine(k);
 				for (l = 0; l < kX; l++) {
 					int ofsX = j + l;
 					//if (ofsX>=inX) ofsX -= inX;
@@ -788,7 +787,7 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 
 	emitStateDuration(10);
 	for (i = 0; i < inY; i++) {
-		dumpVector(10, channel, &high_res_output_image(i, 0), IMGWIDTH);
+		dumpVector(10, channel, &high_res_output_image(i, 0), sc::IMGWIDTH);
 	}
 
 	//#  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -965,9 +964,9 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 		}
 	}
 
-	emitStateDuration(12);
+	/*emitStateDuration(12);
 	dumpFloats(12, channel, g_extended_image_dim_y, g_extended_image_dim_x, low_res_extended_output_image_linterp._pData, false);
-
+*/
 	//#   Add the two componemts
 	//# low_res_output_image=low_res_extended_output_image[image_dim_x+g_cpt_dim_x/2:2*image_dim_x-1+g_cpt_dim_x/2,image_dim_y+g_cpt_dim_y/2:2*image_dim_y-1+g_cpt_dim_y/2]
 	//# output_image=low_res_output_image+high_res_output_image
@@ -992,7 +991,7 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 		}
 	}
 
-	total *= pupil_stop;
+	total *= sc::pupil_stop;
 
 	for (int i = 0; i < image_dim_y; i++) {
 		for (int j = 0; j < image_dim_x; j++) {
@@ -1000,10 +999,10 @@ forward_model_single_psf_dual_resolution(m2d& output_image, m2d& input_image, in
 		}
 	}
 
-	emitStateDuration(13);
+	/*emitStateDuration(13);
 	if (logStages) {
 		dumpFloats(13, channel, image_dim_y, image_dim_x, output_image._pData, false);
-	}
+	}*/
 
 	if (channel == 4) {
 		debug_printf(LVL_PANIC, "Not implemented yet - not used in ESA's prototype. (Line %d in %s)\n", __LINE__, __FILE__);

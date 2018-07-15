@@ -9,10 +9,10 @@ Matrix1D::Matrix1D(size_t size, fp value) : m_data(value, size)
 void Matrix1D::reset()
 { m_data.shift(m_data.size()); }
 
-Matrix2D::Matrix2D(size_t width, size_t height) : Matrix2D(width, height, 0.)
+Matrix2D::Matrix2D(size_t height, size_t width) : Matrix2D(height, width, 0.)
 {}
 
-Matrix2D::Matrix2D(size_t width, size_t height, fp value) : width(width), height(height), m_data(value, width * height)
+Matrix2D::Matrix2D(size_t height, size_t width, fp value) : width(width), height(height), m_data(value, width * height)
 {
 }
 
@@ -36,4 +36,7 @@ const double& Matrix2D::operator[](size_t pos) const
 
 double& Matrix2D::operator[](size_t pos)
 { return m_data[pos]; }
+
+double& Matrix2D::getLine(int y)
+{ return m_data[y * width]; }
 

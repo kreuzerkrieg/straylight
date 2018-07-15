@@ -103,3 +103,14 @@ TARGET_LINK_LIBRARIES(ModernStrayLight
         fftw3
         rt
         )
+target_compile_definitions(ModernStrayLight
+        PRIVATE USE_PSFCACHE=1
+        )
+target_compile_options(ModernStrayLight
+        PRIVATE -O3
+#        PRIVATE -ftree-vectorizer-verbose=2
+        PRIVATE -mavx
+#        PRIVATE -floop-parallelize-all
+#        PRIVATE -ftree-parallelize-loops=4
+        PRIVATE -ftree-slp-vectorize
+        )

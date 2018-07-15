@@ -212,8 +212,8 @@ void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& r
 #ifdef USE_OPENMP
 #pragma omp parallel for
 #endif
-		for (int i = 0; i < radius._height; i++) {
-			for (int j = 0; j < radius._width; j++) {
+		for (int i = 0; i < radius.height; i++) {
+			for (int j = 0; j < radius.width; j++) {
 				// !!!!!!!!!!!!!!!!!
 				// Following Peterson et al. we have ...
 				// !!!!!!!!!!!!!
@@ -242,8 +242,8 @@ void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& r
 	// Add up the direct part of the PSF
 	fp dummy_var = 1.e20;
 	int imin = 0, jmin = 0;
-	for (int i = 0; i < radius._height; i++) {
-		for (int j = 0; j < radius._width; j++) {
+	for (int i = 0; i < radius.height; i++) {
+		for (int j = 0; j < radius.width; j++) {
 			if (radius(i, j) < dummy_var) {
 				imin = i;
 				jmin = j;

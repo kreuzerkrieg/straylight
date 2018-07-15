@@ -230,21 +230,21 @@ void harvey_psf(Matrix2D& psf, Matrix2D& radius, int channel, fp surface_roughne
 
 	// Computation of the Harvey brdf
 	psf.reset();
-	Matrix2D radiusTimesNaDivMaPlusTheta0(radius._height, radius._width);
+	Matrix2D radiusTimesNaDivMaPlusTheta0(radius.height, radius.width);
 	for (int phase = 0; phase < 3; phase++) {
-		for (i = 0; i < radius._height; i++) {
-			for (j = 0; j < radius._width; j++) {
+		for (i = 0; i < radius.height; i++) {
+			for (j = 0; j < radius.width; j++) {
 				radiusTimesNaDivMaPlusTheta0(i, j) = radius(i, j) * na / mirror_aperture[phase] + theta0[phase];
 			}
 		}
-		Matrix2D brdf_M(radius._height, radius._width);
+		Matrix2D brdf_M(radius.height, radius.width);
 		harvey_brdf(brdf_M, radiusTimesNaDivMaPlusTheta0, theta0[phase], b_surface_roughness[phase], s_6nm[channel - 1], l_6nm[channel - 1],
 					m_6nm[channel - 1], n_6nm[channel - 1]);
 
 		// Irradiance in focal plane
 		fp common = E_ent * M_PI * pow(mirror_aperture[0], 2);
-		for (i = 0; i < brdf_M._height; i++) {
-			for (j = 0; j < brdf_M._width; j++) {
+		for (i = 0; i < brdf_M.height; i++) {
+			for (j = 0; j < brdf_M.width; j++) {
 				fp irr_distrib_focal_M = common * brdf_M(i, j) * pow(na, 2) * pow(1. / mirror_aperture[phase], 2);
 				// Computation of the radiant power in the focal plane at each pixel
 				fp power_focal_M = irr_distrib_focal_M * detector_size * detector_size;
@@ -259,8 +259,8 @@ void harvey_psf(Matrix2D& psf, Matrix2D& radius, int channel, fp surface_roughne
 	// Add up the direct part of the PSF
 	fp dummy_var = 1.e20;
 	int imin = 0, jmin = 0;
-	for (i = 0; i < radius._height; i++) {
-		for (j = 0; j < radius._width; j++) {
+	for (i = 0; i < radius.height; i++) {
+		for (j = 0; j < radius.width; j++) {
 			if (radius(i, j) < dummy_var) {
 				imin = i;
 				jmin = j;

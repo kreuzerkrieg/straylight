@@ -22,7 +22,7 @@
 
 #include "utilities.h"
 
-DebugLevel g_debugLevel = LVL_WARN;
+DebugLevel g_debugLevel = LVL_INFO;
 
 // debug_printf is used for logging and error reporting
 

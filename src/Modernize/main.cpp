@@ -20,6 +20,7 @@
 #include <cmath>
 #include <getopt.h>
 #include <iostream>
+#include <string.h>
 
 #include "configStraylight.h"
 #include "utilities.h"
@@ -143,12 +144,12 @@ int main(int argc, char* argv[])
 	//# ;;;;;;;;;;;;;;;;;;;;;;;;
 	//#  Define input images
 	//# ;;;;;;;;;;;;;;;;;;;;;;;
-	int image_dim_y = round(AL_nb_detectors);
-	int image_dim_x = round(AC_nb_detectors);
+	int image_dim_y = round(sc::AL_nb_detectors);
+	int image_dim_x = round(sc::AC_nb_detectors);
 
-	if (image_dim_x != IMGWIDTH || image_dim_y != IMGHEIGHT) {
+	if (image_dim_x != sc::IMGWIDTH || image_dim_y != sc::IMGHEIGHT) {
 		debug_printf(LVL_PANIC, "Contract violation!\n"
-								"Input image size %dx%d instead of %dx%d - aborting...\n", image_dim_x, image_dim_y, IMGWIDTH, IMGHEIGHT);
+								"Input image size %dx%d instead of %dx%d - aborting...\n", image_dim_x, image_dim_y, sc::IMGWIDTH, sc::IMGHEIGHT);
 	}
 	Matrix2D input_TOA_radiance(image_dim_y, image_dim_x);
 

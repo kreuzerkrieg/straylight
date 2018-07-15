@@ -60,7 +60,8 @@
 // Written mbouvet@esa.int , 2011 - AUGUST 25
 
 #include "configStraylight.h"
+#include "Matrices.h"
 
 fp tis_surface_scattering_harvey(int channel, fp theta0, fp s_rough_mirror, bool integration_brdf = false);
 
-void tis_surface_scattering_harvey(fp* output, int channel, fp* theta0, int width, fp s_rough_mirror, bool integration_brdf = false);
+void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_rough_mirror, bool integration_brdf = false);
