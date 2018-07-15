@@ -19,5 +19,9 @@
 
 #include "Matrices.h"
 
-void harvey_psf(Matrix2D& psf, Matrix2D& radius, int channel, fp surface_roughness_mirror1, fp surface_roughness_mirror2,
-				fp surface_roughness_mirror3, bool INCIDENCE_ANGLE_CENTER_FOV = false);
+class PointSpreadFunction
+{
+public:
+	static void harvey(Matrix2D& psf, const Matrix2D& radius, int channel, bool INCIDENCE_ANGLE_CENTER_FOV = false);
+
+};

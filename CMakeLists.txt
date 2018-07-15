@@ -39,9 +39,9 @@ TARGET_LINK_LIBRARIES(StrayLight
         rt
         )
 
-target_compile_definitions(StrayLight
-        PRIVATE USE_OPENMP=1
-        )
+#target_compile_definitions(StrayLight
+#        PRIVATE USE_OPENMP=1
+#        )
 
 find_package(CUDA REQUIRED)
 
@@ -86,7 +86,10 @@ set(MODERNIZED_SOURCES
         src/Modernize/tis_surface_scattering_harvey.cpp
         src/Modernize/tis_surface_scattering_harvey.h
         src/Modernize/utilities.cpp
-        src/Modernize/utilities.h src/Modernize/Matrices.cpp src/Modernize/Matrices.h)
+        src/Modernize/utilities.h
+        src/Modernize/Matrices.cpp
+        src/Modernize/Matrices.h
+        )
 add_definitions(-DUSE_DOUBLEPRECISION)
 add_executable(ModernStrayLight
         ${MODERNIZED_SOURCES}
@@ -103,14 +106,21 @@ TARGET_LINK_LIBRARIES(ModernStrayLight
         fftw3
         rt
         )
-target_compile_definitions(ModernStrayLight
-        PRIVATE USE_PSFCACHE=1
-        )
 target_compile_options(ModernStrayLight
-        PRIVATE -O3
-#        PRIVATE -ftree-vectorizer-verbose=2
-        PRIVATE -mavx
-#        PRIVATE -floop-parallelize-all
-#        PRIVATE -ftree-parallelize-loops=4
-        PRIVATE -ftree-slp-vectorize
+        #        PUBLIC -O3
+        #        PUBLIC -ftree-vectorizer-verbose=2
+        ##        PUBLIC -fopt-info
+        #        PUBLIC -ftree-vectorize
+        #        PUBLIC -fopt-info-vec-missed
+        #        PUBLIC -mavx
+        #        PUBLIC -floop-parallelize-all
+        #        PUBLIC -ftree-parallelize-loops=4
+        #        PUBLIC -ftree-slp-vectorize
+        PUBLIC -O3
+        PUBLIC -ftree-vectorize
+        PUBLIC -ftree-vectorizer-verbose=2
+        PUBLIC -floop-parallelize-all
+        PUBLIC -ftree-parallelize-loops=4
+        PUBLIC -march=native
+        PUBLIC -fopt-info-vec-missed
         )

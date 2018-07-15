@@ -15,28 +15,26 @@
 
 */
 
-#include <cmath>
-
 #include "harvey_brdf.h"
 
 using namespace std;
 
 fp harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l, fp m, fp n)
 {
-	fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
-	fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
+	const fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
+	const fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
 
 	return b * pow(f_harvey, s) / pow(g_harvey, m);
 }
 
-void harvey_brdf(Matrix2D& result, Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n)
+void harvey_brdf(Matrix2D& result, const Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n)
 {
 	result.reset();
-	for (int i = 0; i < thetaArg.height; i++) {
-		for (int j = 0; j < thetaArg.width; j++) {
-			fp theta = thetaArg(i, j);
-			fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
-			fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
+	for (int i = 0; i < thetaArg.height; ++i) {
+		for (int j = 0; j < thetaArg.width; ++j) {
+			const fp theta = thetaArg(i, j);
+			const fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
+			const fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
 
 			result(i, j) = b * pow(f_harvey, s) / pow(g_harvey, m);
 		}

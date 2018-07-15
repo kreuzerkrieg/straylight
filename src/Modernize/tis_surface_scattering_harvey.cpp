@@ -15,15 +15,9 @@
 
 */
 
-#include <iostream>
-#include <algorithm>
-
-#include <math.h>
-#include <cstring>
-
-#include "utilities.h"
 #include "tis_surface_scattering_harvey.h"
 #include "harvey_brdf.h"
+#include "utilities.h"
 
 using namespace std;
 
@@ -120,14 +114,12 @@ fp tis_surface_scattering_harvey(int channel, fp theta0, fp s_rough_mirror, bool
 		debug_printf(LVL_WARN, "Untested code, (Line %d in %s)\n", __LINE__, __FILE__);
 
 		// Integration step
-		int nb_points = 1200.; // 600 is a good values to get the fwd models to run reasonably fast but not completely accurate
+		int nb_points = 1200; // 600 is a good values to get the fwd models to run reasonably fast but not completely accurate
 
 		// compute the TIS for a normal incident angle
 		fp TIS_6nm = 0.;
-#ifdef USE_OPENMP
-#pragma omp parallel for reduction(+:TIS_6nm)
-#endif
-		for (int i = 0; i < nb_points; i++) {
+
+		for (int i = 0; i < nb_points; ++i) {
 			fp theta_rd = (fp(i) / nb_points) * M_PI / 2.;
 			TIS_6nm += 2. * M_PI * harvey_brdf(theta_rd, 0, b_6nm[channel - 1], s_6nm[channel - 1], l_6nm[channel - 1], m_6nm[channel - 1],
 											   n_6nm[channel - 1]) * cos(theta_rd) * sin(theta_rd) * 1. / nb_points * M_PI / 2.;
@@ -141,13 +133,10 @@ fp tis_surface_scattering_harvey(int channel, fp theta0, fp s_rough_mirror, bool
 
 		TIS = 0.;
 
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
 		for (int i_phi = 0; i_phi < nb_points; i_phi++) {
 			fp phi_rd = (fp(i_phi) / nb_points) * M_PI / 2.;
 			fp TISdelta = 0.;
-			for (int i = 0; i < nb_points; i++) {
+			for (int i = 0; i < nb_points; ++i) {
 				fp theta_rd = (fp(i) / nb_points) * M_PI / 2.;
 				fp tmp = (cos(theta_rd) * cos(theta0) + sin(theta_rd) * sin(theta0) * cos(phi_rd));
 				if (tmp > 1.) {
@@ -175,7 +164,7 @@ void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_
 	// Compute the TIS for the input surface roughness
 	// !!!!! this expression does not result from the integration of the BRDF
 	// !!!!! The modeling of the TIS variations with the incidence angle deserves further consolidation
-	for (int i = 0; i < theta0.m_data.size(); i++) {
+	for (int i = 0; i < theta0.m_data.size(); ++i) {
 		TIS[i] = (4. * M_PI * s_rough_mirror / wl[channel - 1] * cos(theta0[i]));
 		TIS[i] *= TIS[i];
 	}
@@ -184,12 +173,12 @@ void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_
 		debug_printf(LVL_WARN, "Untested code, (Line %d in %s)\n", __LINE__, __FILE__);
 
 		// Integration step
-		int nb_points = 1200.; // 600 is a good values to get the fwd models to run reasonnably fast but not completely accurate
+		int nb_points = 1200; // 600 is a good values to get the fwd models to run reasonnably fast but not completely accurate
 
 		// compute the TIS for a normal incident angle
 		fp TIS_6nm = 0.;
 
-		for (int i = 0; i < nb_points; i++) {
+		for (int i = 0; i < nb_points; ++i) {
 			fp theta_rd = (fp(i) / nb_points) * M_PI / 2.;
 			TIS_6nm += 2. * M_PI * harvey_brdf(theta_rd, 0, b_6nm[channel - 1], s_6nm[channel - 1], l_6nm[channel - 1], m_6nm[channel - 1],
 											   n_6nm[channel - 1]) * cos(theta_rd) * sin(theta_rd) * 1. / nb_points * M_PI / 2.;
@@ -208,7 +197,7 @@ void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_
 			for (int i_phi = 0; i_phi < nb_points; i_phi++) {
 				fp phi_rd = (fp(i_phi) / nb_points) * M_PI / 2.;
 				fp TISdelta = 0.;
-				for (int i = 0; i < nb_points; i++) {
+				for (int i = 0; i < nb_points; ++i) {
 					fp theta_rd = (fp(i) / nb_points) * M_PI / 2.;
 					fp tmp = (cos(theta_rd) * cos(theta0[i_angles]) + sin(theta_rd) * sin(theta0[i_angles]) * cos(phi_rd));
 					if (tmp > 1.) {

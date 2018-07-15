@@ -15,8 +15,6 @@
 
 */
 
-#include <cmath>
-
 #include "particulate_contamination_harvey_psf.h"
 
 //+
@@ -195,7 +193,7 @@ void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& r
 	//;;;;;;;;;
 
 	fp TIS_dust = 0.;
-	for (int i = 0; i < 1000; i++) {
+	for (int i = 0; i < 1000; ++i) {
 		fp theta_rd = float(i) / 1000. * M_PI / 2. + 1e-6;
 		fp brdf_particulate = modified_harvey_brdf(theta_rd, theta0, b_particulate_1[channel - 1], s_particulate_1[channel - 1],
 												   l_particulate_1[channel - 1]) +
@@ -208,12 +206,9 @@ void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& r
 	const fp E_ent = 1.; // in W.m-2
 
 	psf_mirror_dust.reset();
-	for (int phase = 0; phase < 3; phase++) {
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
-		for (int i = 0; i < radius.height; i++) {
-			for (int j = 0; j < radius.width; j++) {
+	for (int phase = 0; phase < 3; ++phase) {
+		for (int i = 0; i < radius.height; ++i) {
+			for (int j = 0; j < radius.width; ++j) {
 				// !!!!!!!!!!!!!!!!!
 				// Following Peterson et al. we have ...
 				// !!!!!!!!!!!!!
@@ -242,8 +237,8 @@ void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& r
 	// Add up the direct part of the PSF
 	fp dummy_var = 1.e20;
 	int imin = 0, jmin = 0;
-	for (int i = 0; i < radius.height; i++) {
-		for (int j = 0; j < radius.width; j++) {
+	for (int i = 0; i < radius.height; ++i) {
+		for (int j = 0; j < radius.width; ++j) {
 			if (radius(i, j) < dummy_var) {
 				imin = i;
 				jmin = j;

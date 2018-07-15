@@ -20,4 +20,4 @@
 
 fp harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l, fp m, fp n);
 
-void harvey_brdf(Matrix2D& result, Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n);
+void harvey_brdf(Matrix2D& result, const Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n);

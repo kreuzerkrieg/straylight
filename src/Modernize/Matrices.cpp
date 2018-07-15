@@ -40,3 +40,6 @@ double& Matrix2D::operator[](size_t pos)
 double& Matrix2D::getLine(int y)
 { return m_data[y * width]; }
 
+void Matrix2D::clone(Matrix2D& rhs) const
+{ rhs.m_data = m_data; }
+

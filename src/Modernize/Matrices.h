@@ -56,6 +56,12 @@ public:
 
 	Matrix2D& operator=(Matrix2D&& other) = default;
 
+	Matrix2D(size_t width, size_t height);
+
+	Matrix2D(size_t width, size_t height, fp value);
+
+	void clone(Matrix2D& rhs) const;
+
 	reference operator()(int y, int x);
 
 	const_reference operator()(int y, int x) const;
@@ -65,10 +71,6 @@ public:
 	const data& get() const;
 
 	reference getLine(int y);
-
-	Matrix2D(size_t width, size_t height);
-
-	Matrix2D(size_t width, size_t height, fp value);
 
 	reference operator[](size_t pos);
 
