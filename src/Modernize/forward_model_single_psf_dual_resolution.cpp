@@ -28,6 +28,8 @@
 
 // FFTW3 is used for very fast FFT / invFFT
 #include <fftw3.h>
+#include <chrono>
+#include <iostream>
 
 // Utility functions containing parts of the algorithm
 #include "harvey_psf.h"
@@ -65,11 +67,13 @@ void emitStateDuration(int stage)
 // INTERPOL IDL function: C++ implementation for odd-sized arrays
 //
 //////////////////////////////////////////////////////////////////////////////
-void interpol(fp* result, const fp* y, const Matrix1D& x, int size, const Matrix1D& newX, int newSize)
+void interpol(fp* result, const fp* y, const fp* x, int size, const Matrix1D& newX, int newSize)
 {
-	int i, j, last = size - 1, outIdx = 0;
+	int i;
+	int last = size - 1;
+	int outIdx = 0;
 
-	for (j = 0; j < newSize; ++j) {
+	for (int j = 0; j < newSize; ++j) {
 		fp X = newX[j];
 		// x is in decreasing order, so run it in reverse (increasing)
 		for (i = last; i >= 0; i--) {
@@ -256,8 +260,8 @@ void dumpVector(int stageNo, int channelId, const T* v, int vsize, bool scientif
 // In moving code outside forward_model_single_psf_dual_resolution and
 // into this 'calculatePSF', I am hacking image dimensions to macros
 // (for loop unrolling - speed matters!)
-#define image_dim_x sc::IMGWIDTH
-#define image_dim_y sc::IMGHEIGHT
+constexpr auto image_dim_x = sc::IMGWIDTH;
+constexpr auto image_dim_y = sc::IMGHEIGHT;
 
 Matrix1D g_correction_direct_peak(image_dim_x);
 int extended_image_dim_x = 0;
@@ -270,7 +274,7 @@ int g_psf_extent = 0;
 m2dSpecialPSF* g_psf_high_res = nullptr;
 FFTW_PREFIX(complex)* g_fft_psf_low_res = nullptr;
 
-void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2, fp surface_roughness_M3, int ppm_dust)
+void calculatePSF(int channel)
 {
 	// for iterations
 	//int i, j, k, l;
@@ -315,16 +319,14 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 	//#
 	//# Define an array where we store the variations of the TIS across track on each mirror are stored
 	Matrix2D TIS_surface_roughness_across_track(3, image_dim_x);
-	for (int i = 0; i < 3; ++i) {
-		for (int j = 0; j < image_dim_x; ++j) {
-			TIS_surface_roughness_across_track(i, j) = 0.0;
-		}
-	}
 
-	const int nb_points_TIS_computation = 3;
-	Matrix1D theta0_M1_downto_3(nb_points_TIS_computation);
+	constexpr int nb_points_TIS_computation = 3;
+	/*Matrix1D theta0_M1_downto_3(nb_points_TIS_computation);
 	Matrix1D theta0_M2_downto_3(nb_points_TIS_computation);
-	Matrix1D theta0_M3_downto_3(nb_points_TIS_computation);
+	Matrix1D theta0_M3_downto_3(nb_points_TIS_computation);*/
+	fp theta0_M1_downto_3[nb_points_TIS_computation];
+	fp theta0_M2_downto_3[nb_points_TIS_computation];
+	fp theta0_M3_downto_3[nb_points_TIS_computation];
 	float ofs = 0.0, delta = float(image_dim_x / 2) / 3.;
 	int outputOffset = 0, idx = 0;
 	while (idx < image_dim_x / 2) {
@@ -343,13 +345,13 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 		//# Next we resample to the all the incidence angles
 
 		fp TIS_subsampled[3];
-		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M1_downto_3, surface_roughness_M1);
+		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M1_downto_3, nb_points_TIS_computation, sc::surf_rough_M1);
 		interpol(&TIS_surface_roughness_across_track.getLine(0), TIS_subsampled, theta0_M1_downto_3, 3, theta0_M1, image_dim_x);
 
-		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M2_downto_3, surface_roughness_M2);
+		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M2_downto_3, nb_points_TIS_computation, sc::surf_rough_M2);
 		interpol(&TIS_surface_roughness_across_track.getLine(1), TIS_subsampled, theta0_M2_downto_3, 3, theta0_M2, image_dim_x);
 
-		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M3_downto_3, surface_roughness_M3);
+		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M3_downto_3, nb_points_TIS_computation, sc::surf_rough_M3);
 		interpol(&TIS_surface_roughness_across_track.getLine(2), TIS_subsampled, theta0_M3_downto_3, 3, theta0_M3, image_dim_x);
 	}
 	else {
@@ -368,11 +370,11 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 	//#  Define an array where we store thethe TIS in the center of the FOV on each mirror are stored
 	fp TIS_surface_roughness_center_FOV[3];
 	TIS_surface_roughness_center_FOV[0] = tis_surface_scattering_harvey(channel, sc::i_angles_center_FOV[0] * M_PI / 180.,
-																		surface_roughness_M1);
+																		sc::surf_rough_M1);
 	TIS_surface_roughness_center_FOV[1] = tis_surface_scattering_harvey(channel, sc::i_angles_center_FOV[1] * M_PI / 180.,
-																		surface_roughness_M2);
+																		sc::surf_rough_M2);
 	TIS_surface_roughness_center_FOV[2] = tis_surface_scattering_harvey(channel, sc::i_angles_center_FOV[2] * M_PI / 180.,
-																		surface_roughness_M3);
+																		sc::surf_rough_M3);
 
 	emitStateDuration(3);
 	if (3 >= g_bDumpMinimalLevel) {
@@ -493,8 +495,12 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 	}
 
 	//#  Compute the PSF from the 3 mirrors mirror due to the surface roughness
+	auto start = std::chrono::steady_clock::now();
 	Matrix2D psf_mirror_harvey(extended_image_dim_y, extended_image_dim_x);
 	PointSpreadFunction::harvey(psf_mirror_harvey, radius, channel, true);
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << "PSF took:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "us." << std::endl;
 
 	/*emitStateDuration(7);
 	for (int i = 0; i < extended_image_dim_y; ++i) {
@@ -503,7 +509,7 @@ void calculatePSF(int channel, fp surface_roughness_M1, fp surface_roughness_M2,
 
 	//#  Compute the Mie scattering due to particulate contamination psf for the 3 mirrors
 	Matrix2D psf_mirror_dust(extended_image_dim_y, extended_image_dim_x);
-	if (ppm_dust > 0) {
+	if constexpr (sc::dust_ppm > 0) {
 		particulate_contamination_harvey_psf(psf_mirror_dust, radius, channel);
 	}
 	else {
@@ -628,7 +634,7 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 		oldChannel = channel;
 #endif // USE_PSFCACHE
 
-		calculatePSF(channel, sc::surf_rough_M1, sc::surf_rough_M2, sc::surf_rough_M3, sc::dust_ppm);
+		calculatePSF(channel);
 #ifdef USE_PSFCACHE
 	}
 	else {

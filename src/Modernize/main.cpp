@@ -54,15 +54,6 @@ void usage(char* argv[])
 #else
 	cerr << "- Single precision floating point\n";
 #endif
-#ifdef USE_CUDA_GPU
-	cerr << "- CUDA-based convolution\n";
-#endif
-#ifdef USE_EIGEN
-	cerr << "- Eigen-based convolution\n";
-#endif
-#ifdef USE_OPENMP
-	cerr << "- OpenMP-based multithreading\n";
-#endif
 #ifdef USE_PSFCACHE
 	cerr << "- Automatic re-use of calculated PSF data for contiguous\n  calls to identical channels\n";
 #endif
@@ -149,7 +140,8 @@ int main(int argc, char* argv[])
 
 	if (image_dim_x != sc::IMGWIDTH || image_dim_y != sc::IMGHEIGHT) {
 		debug_printf(LVL_PANIC, "Contract violation!\n"
-								"Input image size %dx%d instead of %dx%d - aborting...\n", image_dim_x, image_dim_y, sc::IMGWIDTH, sc::IMGHEIGHT);
+								"Input image size %dx%d instead of %dx%d - aborting...\n", image_dim_x, image_dim_y, sc::IMGWIDTH,
+					 sc::IMGHEIGHT);
 	}
 	Matrix2D input_TOA_radiance(image_dim_y, image_dim_x);
 
@@ -187,7 +179,7 @@ int main(int argc, char* argv[])
 		for (int bench = 0; bench < 50; ++bench) {
 			debug_printf(LVL_INFO, "Processing image...\n");
 			long st = getTimeInMS();
-			forward_model_single_psf_dual_resolution(output_flux_cal, input_flux_cal, bench == 49);
+			forward_model_single_psf_dual_resolution(output_flux_cal, input_flux_cal, 1, bench == 49);
 			if (bench > 1) { // Skip the PSF calculation
 				long en = getTimeInMS();
 				n++;

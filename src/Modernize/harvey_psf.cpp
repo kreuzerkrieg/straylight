@@ -103,11 +103,11 @@ void PointSpreadFunction::harvey(Matrix2D& psf, const Matrix2D& radius, int chan
 	constexpr fp surface_roughness[] = {sc::surf_rough_M1, sc::surf_rough_M2, sc::surf_rough_M3};
 
 	// Compute the b parameter corresponding to the surface roughness
-	fp b_surface_roughness[3];
-	for (int i = 0; i < 3; i++) {
-		const fp tmpTIS_surface_roughness = pow(4. * M_PI * surface_roughness[i] / sc::wl[channel - 1], 2);
-		b_surface_roughness[i] = sc::b_6nm[channel - 1] * tmpTIS_surface_roughness / TIS_6nm[channel - 1];
-	}
+	const fp b_surface_roughness[] = {
+			sc::b_6nm[channel - 1] * pow(4. * M_PI * surface_roughness[0] / sc::wl[channel - 1], 2) / TIS_6nm[channel - 1],
+			sc::b_6nm[channel - 1] * pow(4. * M_PI * surface_roughness[1] / sc::wl[channel - 1], 2) / TIS_6nm[channel - 1],
+			sc::b_6nm[channel - 1] * pow(4. * M_PI * surface_roughness[2] / sc::wl[channel - 1], 2) / TIS_6nm[channel - 1]};
+
 
 	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	// Compute the direct part of the PSF
@@ -116,23 +116,18 @@ void PointSpreadFunction::harvey(Matrix2D& psf, const Matrix2D& radius, int chan
 	// When the keyword INCIDENCE_ANGLE_CENTER_FOV is set, we use the center of the FOV and the corresponding incidence
 	// angles to compute the TIS
 
-	fp theta0[3];
+	fp theta0[] = {0., 0., 0.};
 
 	if (INCIDENCE_ANGLE_CENTER_FOV) {
 		theta0[0] = sc::i_angles_center_FOV[0] * M_PI / 180.;
 		theta0[1] = sc::i_angles_center_FOV[1] * M_PI / 180.;
 		theta0[2] = sc::i_angles_center_FOV[2] * M_PI / 180.;
 	}
-	else {
-		theta0[0] = 0.;
-		theta0[1] = 0.;
-		theta0[2] = 0.;
-	}
 
 	// Compute the TIS
-	fp TIS_surface_roughness[] = {tis_surface_scattering_harvey(channel, theta0[0], surface_roughness[0]),
-								  tis_surface_scattering_harvey(channel, theta0[1], surface_roughness[1]),
-								  tis_surface_scattering_harvey(channel, theta0[2], surface_roughness[2])};
+	const fp TIS_surface_roughness[] = {tis_surface_scattering_harvey(channel, theta0[0], surface_roughness[0]),
+										tis_surface_scattering_harvey(channel, theta0[1], surface_roughness[1]),
+										tis_surface_scattering_harvey(channel, theta0[2], surface_roughness[2])};
 
 	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	// Compute the diffuse part of the PSF
@@ -166,32 +161,56 @@ void PointSpreadFunction::harvey(Matrix2D& psf, const Matrix2D& radius, int chan
 	//     }
 
 	// Computation of the Harvey brdf
-	psf.reset();
 	Matrix2D radiusTimesNaDivMaPlusTheta0(radius.height, radius.width);
-	for (int phase = 0; phase < 3; phase++) {
+	Matrix2D brdf_M(radius.height, radius.width);
+	psf.reset();
+	//for (int phase = 0; phase < 3; phase++) {
+	{
 		radius.clone(radiusTimesNaDivMaPlusTheta0);
 		radiusTimesNaDivMaPlusTheta0.m_data *= sc::na;
-		radiusTimesNaDivMaPlusTheta0.m_data /= sc::mirror_aperture[phase];
-		radiusTimesNaDivMaPlusTheta0.m_data += theta0[phase];
+		radiusTimesNaDivMaPlusTheta0.m_data /= sc::mirror_aperture[0];
+		radiusTimesNaDivMaPlusTheta0.m_data += theta0[0];
 
-		Matrix2D brdf_M(radius.height, radius.width);
-		harvey_brdf(brdf_M, radiusTimesNaDivMaPlusTheta0, theta0[phase], b_surface_roughness[phase], sc::s_6nm[channel - 1],
-					sc::l_6nm[channel - 1], sc::m_6nm[channel - 1], sc::n_6nm[channel - 1]);
-
+		harvey_brdf(brdf_M, radiusTimesNaDivMaPlusTheta0, theta0[0], b_surface_roughness[0], sc::s_6nm[channel - 1], sc::l_6nm[channel - 1],
+					sc::m_6nm[channel - 1], sc::n_6nm[channel - 1]);
 		// Irradiance in focal plane
 		constexpr fp common = sc::E_ent * M_PI * pow(sc::mirror_aperture[0], 2);
-		for (int i = 0; i < brdf_M.height; ++i) {
-			for (int j = 0; j < brdf_M.width; ++j) {
-				const fp irr_distrib_focal_M = common * brdf_M(i, j) * sc::na2 * pow(1. / sc::mirror_aperture[phase], 2);
-				// Computation of the radiant power in the focal plane at each pixel
-				const fp power_focal_M = irr_distrib_focal_M * detector_size * detector_size;
-				// Computation of the normalised power distribution in focal plane 
-				const fp norm_power_distrib_focal_M = power_focal_M / common;
-				// Add up all mirror contibutions due to surface roughness
-				psf(i, j) += norm_power_distrib_focal_M;
-			}
-		}
+		constexpr fp irr_distrib_focal_M = common * sc::na2 * pow(1. / sc::mirror_aperture[0], 2);
+		const fp power_focal_M = irr_distrib_focal_M * detector_size * detector_size;
+		const fp norm_power_distrib_focal_M = power_focal_M / common;
+		psf.m_data += norm_power_distrib_focal_M;
 	}
+	{
+		radius.clone(radiusTimesNaDivMaPlusTheta0);
+		radiusTimesNaDivMaPlusTheta0.m_data *= sc::na;
+		radiusTimesNaDivMaPlusTheta0.m_data /= sc::mirror_aperture[1];
+		radiusTimesNaDivMaPlusTheta0.m_data += theta0[1];
+
+		harvey_brdf(brdf_M, radiusTimesNaDivMaPlusTheta0, theta0[1], b_surface_roughness[1], sc::s_6nm[channel - 1], sc::l_6nm[channel - 1],
+					sc::m_6nm[channel - 1], sc::n_6nm[channel - 1]);
+		// Irradiance in focal plane
+		constexpr fp common = sc::E_ent * M_PI * pow(sc::mirror_aperture[0], 2);
+		constexpr fp irr_distrib_focal_M = common * sc::na2 * pow(1. / sc::mirror_aperture[1], 2);
+		const fp power_focal_M = irr_distrib_focal_M * detector_size * detector_size;
+		const fp norm_power_distrib_focal_M = power_focal_M / common;
+		psf.m_data += norm_power_distrib_focal_M;
+	}
+	{
+		radius.clone(radiusTimesNaDivMaPlusTheta0);
+		radiusTimesNaDivMaPlusTheta0.m_data *= sc::na;
+		radiusTimesNaDivMaPlusTheta0.m_data /= sc::mirror_aperture[2];
+		radiusTimesNaDivMaPlusTheta0.m_data += theta0[2];
+
+		harvey_brdf(brdf_M, radiusTimesNaDivMaPlusTheta0, theta0[2], b_surface_roughness[2], sc::s_6nm[channel - 1], sc::l_6nm[channel - 1],
+					sc::m_6nm[channel - 1], sc::n_6nm[channel - 1]);
+		// Irradiance in focal plane
+		constexpr fp common = sc::E_ent * M_PI * pow(sc::mirror_aperture[0], 2);
+		constexpr fp irr_distrib_focal_M = common * sc::na2 * pow(1. / sc::mirror_aperture[2], 2);
+		const fp power_focal_M = irr_distrib_focal_M * detector_size * detector_size;
+		const fp norm_power_distrib_focal_M = power_focal_M / common;
+		psf.m_data += norm_power_distrib_focal_M;
+	}
+	//}
 
 	// Add up the direct part of the PSF
 	auto minElement = std::min_element(std::begin(radius.m_data), std::end(radius.m_data));

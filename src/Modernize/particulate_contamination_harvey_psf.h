@@ -19,4 +19,4 @@
 
 #include "Matrices.h"
 
-void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, Matrix2D& radius, int channel);
+void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, const Matrix2D& radius, int channel);

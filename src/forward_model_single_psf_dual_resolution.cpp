@@ -34,6 +34,7 @@
 
 // FFTW3 is used for very fast FFT / invFFT
 #include <fftw3.h>
+#include <chrono>
 
 // Utility functions containing parts of the algorithm
 #include "harvey_psf.h"
@@ -131,6 +132,7 @@ typedef Eigen::Matrix<fp, IMGHEIGHT, IMGWIDTH, Eigen::RowMajor>      m2dSpecialI
 // from configStraylight.h for the two convolution types.
 
 typedef m2d m2dSpecialImage;
+typedef m2d m2dSpecialPSF;
 
 #endif // USE_EIGEN
 
@@ -602,9 +604,14 @@ void calculatePSF(
     }
 
     //#  Compute the PSF from the 3 mirrors mirror due to the surface roughness
-    m2d psf_mirror_harvey(g_extended_image_dim_y, g_extended_image_dim_x);
+	auto start = std::chrono::steady_clock::now();
+
+	m2d psf_mirror_harvey(g_extended_image_dim_y, g_extended_image_dim_x);
     harvey_psf(psf_mirror_harvey, radius, channel,
         surface_roughness_M1, surface_roughness_M2 , surface_roughness_M3, true);
+	auto end = std::chrono::steady_clock::now();
+
+	std::cout << "PSF took:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "us." << std::endl;
 
     emitStateDuration(7);
     for(int i=0; i<g_extended_image_dim_y; i++)

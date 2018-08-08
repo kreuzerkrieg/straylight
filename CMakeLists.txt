@@ -103,6 +103,7 @@ SET_TARGET_PROPERTIES(ModernStrayLight
         )
 
 TARGET_LINK_LIBRARIES(ModernStrayLight
+        -fopenmp
         fftw3
         rt
         )
@@ -116,11 +117,25 @@ target_compile_options(ModernStrayLight
         #        PUBLIC -floop-parallelize-all
         #        PUBLIC -ftree-parallelize-loops=4
         #        PUBLIC -ftree-slp-vectorize
+        PUBLIC -Wall
+        PUBLIC -Wextra
+        #        PUBLIC -Weverything
+        #        PUBLIC -Wno-c++98-compat
+        #        -Wno-c++98-compat-pedantic
+        PUBLIC -pedantic
         PUBLIC -O3
         PUBLIC -ftree-vectorize
-        PUBLIC -ftree-vectorizer-verbose=2
-        PUBLIC -floop-parallelize-all
-        PUBLIC -ftree-parallelize-loops=4
+        #        PUBLIC -ftree-vectorizer-verbose=2
+        #        PUBLIC -floop-parallelize-all
+        #        PUBLIC -ftree-parallelize-loops=4
         PUBLIC -march=native
-        PUBLIC -fopt-info-vec-missed
+        #        PUBLIC -fopt-info-vec-missed
+        PUBLIC -msse
+        PUBLIC -msse2
+        PUBLIC -mavx
+        PUBLIC -mavx2
+        -fopenmp
+        #        -Rpass=loop-vectorize
+        #        -Rpass-missed=loop-vectorize
+        #        -Rpass-analysis=loop-vectorize
         )

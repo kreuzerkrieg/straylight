@@ -29,7 +29,7 @@ fp harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l, fp m, fp n)
 
 void harvey_brdf(Matrix2D& result, const Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n)
 {
-	result.reset();
+	thetaArg.clone(result);
 	for (int i = 0; i < thetaArg.height; ++i) {
 		for (int j = 0; j < thetaArg.width; ++j) {
 			const fp theta = thetaArg(i, j);
