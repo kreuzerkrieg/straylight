@@ -30,13 +30,7 @@ fp harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l, fp m, fp n)
 void harvey_brdf(Matrix2D& result, const Matrix2D& thetaArg, fp theta0, fp b, fp s, fp l, fp m, fp n)
 {
 	thetaArg.clone(result);
-	for (int i = 0; i < thetaArg.height; ++i) {
-		for (int j = 0; j < thetaArg.width; ++j) {
-			const fp theta = thetaArg(i, j);
-			const fp g_harvey = 0.5 * (cos(theta) + cos(theta0));
-			const fp f_harvey = sqrt(1.0 + pow(((sin(theta) - sin(theta0)) / l / pow(g_harvey, n)), 2));
-
-			result(i, j) = b * pow(f_harvey, s) / pow(g_harvey, m);
-		}
-	}
+	std::transform(std::begin(thetaArg.m_data), std::end(thetaArg.m_data), std::begin(result.m_data), [&](const auto& theta) {
+		return harvey_brdf(theta, theta0, b, s, l, m, n);
+	});
 }

@@ -121,7 +121,16 @@ fp tis_surface_scattering_harvey(int channel, fp theta0, fp s_rough_mirror, bool
 	return TIS;
 }
 
-void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_rough_mirror, bool integration_brdf)
+void tis_surface_scattering_harvey(fp* TIS, int channel, const fp* const theta0, int thetas, fp s_rough_mirror)
+{
+	// Compute the TIS for the input surface roughness
+	// !!!!! this expression does not result from the integration of the BRDF
+	// !!!!! The modeling of the TIS variations with the incidence angle deserves further consolidation
+	for (int i = 0; i < thetas; ++i) {
+		TIS[i] = tis_surface_scattering_harvey(channel, theta0[i], s_rough_mirror);
+	}
+}
+/*void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_rough_mirror, bool integration_brdf)
 {
 	// Compute the TIS for the input surface roughness
 	// !!!!! this expression does not result from the integration of the BRDF
@@ -135,7 +144,7 @@ void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_
 		debug_printf(LVL_WARN, "Untested code, (Line %d in %s)\n", __LINE__, __FILE__);
 
 		// Integration step
-		constexpr int nb_points = 1200; // 600 is a good values to get the fwd models to run reasonnably fast but not completely accurate
+		constexpr int nb_points = 1200; // 600 is a good values to get the fwd models to run reasonably fast but not completely accurate
 
 		// compute the TIS for a normal incident angle
 		fp TIS_6nm = 0.;
@@ -182,4 +191,4 @@ void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_
 			TIS[i_angles] *= 2.;
 		}
 	}
-}
+}*/

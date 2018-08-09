@@ -611,7 +611,7 @@ void calculatePSF(
         surface_roughness_M1, surface_roughness_M2 , surface_roughness_M3, true);
 	auto end = std::chrono::steady_clock::now();
 
-	std::cout << "PSF took:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "us." << std::endl;
+	std::cout << "PSF took:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms." << std::endl;
 
     emitStateDuration(7);
     for(int i=0; i<g_extended_image_dim_y; i++)

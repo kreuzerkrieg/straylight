@@ -108,15 +108,16 @@ TARGET_LINK_LIBRARIES(ModernStrayLight
         rt
         )
 target_compile_options(ModernStrayLight
-        #        PUBLIC -O3
-        #        PUBLIC -ftree-vectorizer-verbose=2
-        ##        PUBLIC -fopt-info
-        #        PUBLIC -ftree-vectorize
-        #        PUBLIC -fopt-info-vec-missed
-        #        PUBLIC -mavx
-        #        PUBLIC -floop-parallelize-all
-        #        PUBLIC -ftree-parallelize-loops=4
-        #        PUBLIC -ftree-slp-vectorize
+        PUBLIC -O3
+        PUBLIC -ftree-vectorizer-verbose=2
+        #        PUBLIC -fopt-info
+        PUBLIC -ftree-vectorize
+        PUBLIC -fopt-info-vec-missed
+#        PUBLIC -fopt-info-vec-all
+        PUBLIC -mavx
+        PUBLIC -floop-parallelize-all
+        PUBLIC -ftree-parallelize-loops=4
+        PUBLIC -ftree-slp-vectorize
         PUBLIC -Wall
         PUBLIC -Wextra
         #        PUBLIC -Weverything
@@ -125,17 +126,17 @@ target_compile_options(ModernStrayLight
         PUBLIC -pedantic
         PUBLIC -O3
         PUBLIC -ftree-vectorize
-        #        PUBLIC -ftree-vectorizer-verbose=2
-        #        PUBLIC -floop-parallelize-all
-        #        PUBLIC -ftree-parallelize-loops=4
+        PUBLIC -ftree-vectorizer-verbose=2
+        PUBLIC -floop-parallelize-all
+        PUBLIC -ftree-parallelize-loops=4
         PUBLIC -march=native
-        #        PUBLIC -fopt-info-vec-missed
+#        PUBLIC -fopt-info-vec-missed
         PUBLIC -msse
         PUBLIC -msse2
         PUBLIC -mavx
         PUBLIC -mavx2
         -fopenmp
-        #        -Rpass=loop-vectorize
-        #        -Rpass-missed=loop-vectorize
-        #        -Rpass-analysis=loop-vectorize
+        #                -Rpass=loop-vectorize
+        #                -Rpass-missed=loop-vectorize
+        #                -Rpass-analysis=loop-vectorize
         )

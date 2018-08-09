@@ -72,26 +72,4 @@ constexpr fp tis_surface_scattering_harvey(int channel, fp theta0, fp s_rough_mi
 	return pow((4. * M_PI * s_rough_mirror / sc::wl[channel - 1] * cos(theta0)), 2);
 }
 
-void tis_surface_scattering_harvey(fp* TIS, int channel, Matrix1D& theta0, fp s_rough_mirror, bool integration_brdf);
-
-/*constexpr void tis_surface_scattering_harvey(fp* TIS, int channel, const Matrix1D& theta0, fp s_rough_mirror)
-{
-	// Compute the TIS for the input surface roughness
-	// !!!!! this expression does not result from the integration of the BRDF
-	// !!!!! The modeling of the TIS variations with the incidence angle deserves further consolidation
-	for (int i = 0; i < theta0.m_data.size(); ++i) {
-		TIS[i] = (4. * M_PI * s_rough_mirror / sc::wl[channel - 1] * cos(theta0[i]));
-		TIS[i] *= TIS[i];
-	}
-}*/
-
-constexpr void tis_surface_scattering_harvey(fp* TIS, int channel, const fp* const theta0, int thetas, fp s_rough_mirror)
-{
-	// Compute the TIS for the input surface roughness
-	// !!!!! this expression does not result from the integration of the BRDF
-	// !!!!! The modeling of the TIS variations with the incidence angle deserves further consolidation
-	for (int i = 0; i < thetas; ++i) {
-		TIS[i] = (4. * M_PI * s_rough_mirror / sc::wl[channel - 1] * cos(theta0[i]));
-		TIS[i] *= TIS[i];
-	}
-}
+void tis_surface_scattering_harvey(fp* TIS, int channel, const fp* const theta0, int thetas, fp s_rough_mirror);

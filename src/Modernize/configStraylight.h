@@ -125,5 +125,57 @@ constexpr fp i_angles_edge_FOV[] = {32.2, 42.86, 21.23};
 constexpr fp delta_incidence_angle[] = {i_angles_edge_FOV[0] - i_angles_center_FOV[0], i_angles_edge_FOV[1] - i_angles_center_FOV[1],
 										i_angles_edge_FOV[2] - i_angles_center_FOV[2]};
 constexpr int low_to_high_spatial_resolution = 11;//  MUST BE AN ODD NUMBER!!!
+
+// !!!!
+//size of the instrument aperture at each mirror in meter: from Taracola code => I don't understand where these values come from
+// !!!!
+//const fp mirror_aperture[] = {9.5 * 6.0 / sc::Fnum * 1e-3, 5.05 * 6.0 / sc::Fnum * 1e-3, 6.85 * 6.0 / sc::Fnum * 1e-3};
+
+// Define the parameters for the BRDF of the mirror for each spectral band for a surface roughness of 6 nm
+// These are values given to Taracola by CSL
+
+// Blue band
+constexpr fp b_particulate_blue_1 = 8.13;
+constexpr fp s_particulate_blue_1 = -2.17;
+constexpr fp l_particulate_blue_1 = 0.0026;
+constexpr fp b_particulate_blue_2 = 0.00244;
+constexpr fp s_particulate_blue_2 = -0.881;
+constexpr fp l_particulate_blue_2 = 0.0431513;
+
+// Red band
+constexpr fp b_particulate_red_1 = 3.93;
+constexpr fp s_particulate_red_1 = -2.35;
+constexpr fp l_particulate_red_1 = 0.00411;
+constexpr fp b_particulate_red_2 = 0.00429;
+constexpr fp s_particulate_red_2 = -1.11;
+constexpr fp l_particulate_red_2 = 0.0431513;
+
+// NIR band
+constexpr fp b_particulate_nir_1 = 2.63;
+constexpr fp s_particulate_nir_1 = -2.23;
+constexpr fp l_particulate_nir_1 = 0.00472;
+constexpr fp b_particulate_nir_2 = 0.00441;
+constexpr fp s_particulate_nir_2 = -1.06467;
+constexpr fp l_particulate_nir_2 = 0.0431513;
+
+// SWIR band
+constexpr fp b_particulate_swir_1 = 0.557;
+constexpr fp s_particulate_swir_1 = -1.36716;
+constexpr fp l_particulate_swir_1 = 0.0025166;
+constexpr fp b_particulate_swir_2 = 0.37724;
+constexpr fp s_particulate_swir_2 = -2.40281;
+constexpr fp l_particulate_swir_2 = 0.0116923;
+
+// Put all previous values in a array for all bands
+constexpr fp b_particulate_1[] = {b_particulate_blue_1, b_particulate_red_1, b_particulate_nir_1, b_particulate_swir_1};
+constexpr fp s_particulate_1[] = {s_particulate_blue_1, s_particulate_red_1, s_particulate_nir_1, s_particulate_swir_1};
+constexpr fp l_particulate_1[] = {l_particulate_blue_1, l_particulate_red_1, l_particulate_nir_1, l_particulate_swir_1};
+constexpr fp b_particulate_2[] = {b_particulate_blue_2, b_particulate_red_2, b_particulate_nir_2, b_particulate_swir_2};
+constexpr fp s_particulate_2[] = {s_particulate_blue_2, s_particulate_red_2, s_particulate_nir_2, s_particulate_swir_2};
+constexpr fp l_particulate_2[] = {l_particulate_blue_2, l_particulate_red_2, l_particulate_nir_2, l_particulate_swir_2};
+
+//; !!! This defines the incidence angle of the chief ray on the mirror - This should actually be variable in the FOV !!!
+//; The value of the TIS should also depend on this angle
+constexpr fp theta0 = 0.;
 }
 namespace sc = straylight::constansts;

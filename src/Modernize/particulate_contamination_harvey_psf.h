@@ -19,4 +19,8 @@
 
 #include "Matrices.h"
 
+fp modified_harvey_brdf(fp theta, fp theta0, fp b, fp s, fp l);
+
+fp harvey_brdf(int channel, fp detector_size, int phase, fp element);
+
 void particulate_contamination_harvey_psf(Matrix2D& psf_mirror_dust, const Matrix2D& radius, int channel);

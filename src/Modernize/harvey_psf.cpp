@@ -92,11 +92,8 @@ void PointSpreadFunction::harvey(Matrix2D& psf, const Matrix2D& radius, int chan
 	// 
 	// Total integrated scattering for 6 nm surface roughness mirrors assuming a 0 degree incidence angle
 	// 
-	fp TIS_6nm[4];
-	TIS_6nm[0] = tis_surface_scattering_harvey(1, 0., 6e-9);
-	TIS_6nm[1] = tis_surface_scattering_harvey(2, 0., 6e-9);
-	TIS_6nm[2] = tis_surface_scattering_harvey(3, 0., 6e-9);
-	TIS_6nm[3] = tis_surface_scattering_harvey(4, 0., 6e-9);
+	constexpr fp TIS_6nm[] = {tis_surface_scattering_harvey(1, 0., 6e-9), tis_surface_scattering_harvey(2, 0., 6e-9),
+							  tis_surface_scattering_harvey(3, 0., 6e-9), tis_surface_scattering_harvey(4, 0., 6e-9)};
 
 	// Compute the TIS for the input surface roughness
 

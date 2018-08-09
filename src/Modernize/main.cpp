@@ -176,10 +176,12 @@ int main(int argc, char* argv[])
 	if (bBenchmark) {
 		long total = 0, totalSq = 0, n = 0;
 		long minTime = 1000000;
+		FMSPSFDR fmspsfdr;
 		for (int bench = 0; bench < 50; ++bench) {
 			debug_printf(LVL_INFO, "Processing image...\n");
 			long st = getTimeInMS();
-			forward_model_single_psf_dual_resolution(output_flux_cal, input_flux_cal, 1, bench == 49);
+
+			fmspsfdr.forward_model_single_psf_dual_resolution(output_flux_cal, input_flux_cal, 1, bench == 49);
 			if (bench > 1) { // Skip the PSF calculation
 				long en = getTimeInMS();
 				n++;
@@ -194,7 +196,8 @@ int main(int argc, char* argv[])
 	}
 	else {
 		debug_printf(LVL_INFO, "Processing image...\n");
-		forward_model_single_psf_dual_resolution(output_flux_cal, input_flux_cal, true);
+		FMSPSFDR fmspsfdr;
+		fmspsfdr.forward_model_single_psf_dual_resolution(output_flux_cal, input_flux_cal, true);
 	}
 
 	return 0;

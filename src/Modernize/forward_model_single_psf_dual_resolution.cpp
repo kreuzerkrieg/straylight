@@ -20,14 +20,13 @@
 
 
 // General configuration parameters are in this header.
+#include "forward_model_single_psf_dual_resolution.h"
 #include "configStraylight.h"
 #include <cassert>
 #include <map>
 #include <vector>
 #include <cstring>
 
-// FFTW3 is used for very fast FFT / invFFT
-#include <fftw3.h>
 #include <chrono>
 #include <iostream>
 
@@ -38,7 +37,6 @@
 
 #include "utilities.h"
 
-using m2dSpecialPSF = Matrix2D;
 using m2dSpecialImage = Matrix2D;
 
 
@@ -260,25 +258,11 @@ void dumpVector(int stageNo, int channelId, const T* v, int vsize, bool scientif
 // In moving code outside forward_model_single_psf_dual_resolution and
 // into this 'calculatePSF', I am hacking image dimensions to macros
 // (for loop unrolling - speed matters!)
-constexpr auto image_dim_x = sc::IMGWIDTH;
-constexpr auto image_dim_y = sc::IMGHEIGHT;
 
-Matrix1D g_correction_direct_peak(image_dim_x);
-int extended_image_dim_x = 0;
-int extended_image_dim_y = 0;
-int g_cpt_dim_y = 0;
-int g_cpt_dim_x = 0;
-int g_lowres_y = 0;
-int g_lowres_x = 0;
-int g_psf_extent = 0;
-m2dSpecialPSF* g_psf_high_res = nullptr;
-FFTW_PREFIX(complex)* g_fft_psf_low_res = nullptr;
 
-void calculatePSF(int channel)
+
+void FMSPSFDR::calculatePSF(int channel)
 {
-	// for iterations
-	//int i, j, k, l;
-
 	fp detector_size = 0.;
 
 	//# Choose detector size
@@ -300,25 +284,25 @@ void calculatePSF(int channel)
 	//# From Semen, the values obtained in degrees for the incidence angles in the center and edge of the FOV
 
 	//# Computation of the incidence angle variations in radian
-	Matrix1D theta0_M1(image_dim_x), theta0_M2(image_dim_x), theta0_M3(image_dim_x);
-	for (int i = 0; i < image_dim_x; ++i) {
-		theta0_M1[i] = fabs(sc::delta_incidence_angle[0] * M_PI / 180. * (i - image_dim_x / 2) /
+	Matrix1D theta0_M1(sc::IMGWIDTH), theta0_M2(sc::IMGWIDTH), theta0_M3(sc::IMGWIDTH);
+	for (int i = 0; i < sc::IMGWIDTH; ++i) {
+		theta0_M1[i] = fabs(sc::delta_incidence_angle[0] * M_PI / 180. * (i - sc::IMGWIDTH / 2) /
 							(tan(17.3 * M_PI / 180.) * sc::focal / detector_size)) + sc::i_angles_center_FOV[0] * M_PI / 180.;
-		theta0_M2[i] = fabs(sc::delta_incidence_angle[1] * M_PI / 180. * (i - image_dim_x / 2) /
+		theta0_M2[i] = fabs(sc::delta_incidence_angle[1] * M_PI / 180. * (i - sc::IMGWIDTH / 2) /
 							(tan(17.3 * M_PI / 180.) * sc::focal / detector_size)) + sc::i_angles_center_FOV[1] * M_PI / 180.;
-		theta0_M3[i] = fabs(sc::delta_incidence_angle[2] * M_PI / 180. * (i - image_dim_x / 2) /
+		theta0_M3[i] = fabs(sc::delta_incidence_angle[2] * M_PI / 180. * (i - sc::IMGWIDTH / 2) /
 							(tan(17.3 * M_PI / 180.) * sc::focal / detector_size)) + sc::i_angles_center_FOV[2] * M_PI / 180.;
 	}
 
 	/*emitStateDuration(1);
-	dumpVector(1, channel, (fp*) theta0_M1, image_dim_x);
-	dumpVector(1, channel, (fp*) theta0_M2, image_dim_x);
-	dumpVector(1, channel, (fp*) theta0_M3, image_dim_x);*/
+	dumpVector(1, channel, (fp*) theta0_M1, sc::IMGWIDTH);
+	dumpVector(1, channel, (fp*) theta0_M2, sc::IMGWIDTH);
+	dumpVector(1, channel, (fp*) theta0_M3, sc::IMGWIDTH);*/
 
 	//# Computation of TIS
 	//#
 	//# Define an array where we store the variations of the TIS across track on each mirror are stored
-	Matrix2D TIS_surface_roughness_across_track(3, image_dim_x);
+	Matrix2D TIS_surface_roughness_across_track(3, sc::IMGWIDTH);
 
 	constexpr int nb_points_TIS_computation = 3;
 	/*Matrix1D theta0_M1_downto_3(nb_points_TIS_computation);
@@ -327,9 +311,9 @@ void calculatePSF(int channel)
 	fp theta0_M1_downto_3[nb_points_TIS_computation];
 	fp theta0_M2_downto_3[nb_points_TIS_computation];
 	fp theta0_M3_downto_3[nb_points_TIS_computation];
-	float ofs = 0.0, delta = float(image_dim_x / 2) / 3.;
+	float ofs = 0.0, delta = float(sc::IMGWIDTH / 2) / 3.;
 	int outputOffset = 0, idx = 0;
-	while (idx < image_dim_x / 2) {
+	while (idx < sc::IMGWIDTH / 2) {
 		theta0_M1_downto_3[outputOffset] = theta0_M1[idx];
 		theta0_M2_downto_3[outputOffset] = theta0_M2[idx];
 		theta0_M3_downto_3[outputOffset++] = theta0_M3[idx];
@@ -340,19 +324,19 @@ void calculatePSF(int channel)
 
 	//# We subsample the theta0 to compute the TIS which compuatation is time consuming and variations are any quite smooth
 	//# with the incidence angle
-	if (image_dim_x > 50) {
+	if (sc::IMGWIDTH > 50) {
 		//# For each band, we subsample the incidence angle and they we compute the TIS for fewer points
 		//# Next we resample to the all the incidence angles
 
 		fp TIS_subsampled[3];
 		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M1_downto_3, nb_points_TIS_computation, sc::surf_rough_M1);
-		interpol(&TIS_surface_roughness_across_track.getLine(0), TIS_subsampled, theta0_M1_downto_3, 3, theta0_M1, image_dim_x);
+		interpol(&TIS_surface_roughness_across_track.getLine(0), TIS_subsampled, theta0_M1_downto_3, 3, theta0_M1, sc::IMGWIDTH);
 
 		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M2_downto_3, nb_points_TIS_computation, sc::surf_rough_M2);
-		interpol(&TIS_surface_roughness_across_track.getLine(1), TIS_subsampled, theta0_M2_downto_3, 3, theta0_M2, image_dim_x);
+		interpol(&TIS_surface_roughness_across_track.getLine(1), TIS_subsampled, theta0_M2_downto_3, 3, theta0_M2, sc::IMGWIDTH);
 
 		tis_surface_scattering_harvey(TIS_subsampled, channel, theta0_M3_downto_3, nb_points_TIS_computation, sc::surf_rough_M3);
-		interpol(&TIS_surface_roughness_across_track.getLine(2), TIS_subsampled, theta0_M3_downto_3, 3, theta0_M3, image_dim_x);
+		interpol(&TIS_surface_roughness_across_track.getLine(2), TIS_subsampled, theta0_M3_downto_3, 3, theta0_M3, sc::IMGWIDTH);
 	}
 	else {
 		//# We do here the brute force approach: to each incidence angle we compute the TIS
@@ -363,9 +347,9 @@ void calculatePSF(int channel)
 	}
 
 	/*emitStateDuration(2);
-	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(0), image_dim_x);
-	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(1), image_dim_x);
-	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(2), image_dim_x);*/
+	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(0), sc::IMGWIDTH);
+	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(1), sc::IMGWIDTH);
+	dumpVector(2, channel, TIS_surface_roughness_across_track.getLine(2), sc::IMGWIDTH);*/
 
 	//#  Define an array where we store thethe TIS in the center of the FOV on each mirror are stored
 	fp TIS_surface_roughness_center_FOV[3];
@@ -394,15 +378,15 @@ void calculatePSF(int channel)
 	//#  We use the TIS in the center of the FOV to normalise these TIS across track variations because later on in the code
 	//#  we make use of Harvey PSF that is computer for the center of the FOV and has the value (1-TIS_center_FOV_M1)(1-TIS_center_FOV_M2)(1-TIS_center_FOV_M3) in its peak
 	//#
-	for (int i = 0; i < image_dim_x; ++i) {
-		g_correction_direct_peak[i] = (1. - TIS_surface_roughness_across_track(0, i)) * (1. - TIS_surface_roughness_across_track(1, i)) *
-									  (1. - TIS_surface_roughness_across_track(2, i));
-		g_correction_direct_peak[i] /= (1. - TIS_surface_roughness_center_FOV[0]) * (1. - TIS_surface_roughness_center_FOV[1]) *
-									   (1. - TIS_surface_roughness_center_FOV[2]);
+	for (int i = 0; i < sc::IMGWIDTH; ++i) {
+		correction_direct_peak[i] = (1. - TIS_surface_roughness_across_track(0, i)) * (1. - TIS_surface_roughness_across_track(1, i)) *
+									(1. - TIS_surface_roughness_across_track(2, i));
+		correction_direct_peak[i] /= (1. - TIS_surface_roughness_center_FOV[0]) * (1. - TIS_surface_roughness_center_FOV[1]) *
+									 (1. - TIS_surface_roughness_center_FOV[2]);
 	}
 
 	emitStateDuration(4);
-	//dumpVector(4, channel, (fp*) g_correction_direct_peak, image_dim_x);
+	//dumpVector(4, channel, (fp*)correction_direct_peak, sc::IMGWIDTH);
 
 	//#  We split the convolution problem into two convolutions:
 	//#  1) A high spatial convolution with the core of the PSF at full spatial resolution:
@@ -415,41 +399,16 @@ void calculatePSF(int channel)
 	//#  !!! this should be an odd number
 	constexpr int nb_low_res_bin_in_high_res = 1; //  MUST BE AN ODD NUMBER!!!
 	assert(1 == (nb_low_res_bin_in_high_res & 1));
-	g_psf_extent = nb_low_res_bin_in_high_res *
-				   sc::low_to_high_spatial_resolution; //# this number should be about 500 pixel given the encircled energy of psfs
+	psf_extent = nb_low_res_bin_in_high_res *
+				 sc::low_to_high_spatial_resolution; //# this number should be about 500 pixel given the encircled energy of psfs
 
-	if ((g_psf_extent > image_dim_x) || (g_psf_extent > image_dim_y)) {
+	if ((psf_extent > sc::IMGWIDTH) || (psf_extent > sc::IMGHEIGHT)) {
 		debug_printf(LVL_PANIC, "Extent of high res PSF is larger than image itself!");
 		fflush(stdout);
 		exit(1);
 	}
 
-	//#  Define extended input image which is used during the FFT
-	//#  This extended image has dimensions which are twice the input_image passed to the routine
-	//#  The input_image variable is place at the center of the newly created variable
-	//#  The newly created variable must be of dimension at least 3 x dimensions of the original image and should have an odd number of
-	//#  columns and lines and should be a multiple of sc::low_to_high_spatial_resolution
-	//#
-	//#  Define starting values of the dimensions of the extended image:
-	extended_image_dim_x = 3 * image_dim_x;
-	extended_image_dim_y = 3 * image_dim_y;
-	//#
-	//#  Iterate on dimensions that are odd and multiple of sc::low_to_high_spatial_resolution and larger than 3*image_dim_x
-	//#
-	g_cpt_dim_x = 0;
-	do {
-		g_cpt_dim_x++;
-	} while (!(((extended_image_dim_x + g_cpt_dim_x) % 2 == 1) &&
-			   ((extended_image_dim_x + g_cpt_dim_x) % sc::low_to_high_spatial_resolution == 0)));
-	extended_image_dim_x = extended_image_dim_x + g_cpt_dim_x;
-
-	g_cpt_dim_y = 0;
-	do {
-		g_cpt_dim_y++;
-	} while (!(((extended_image_dim_y + g_cpt_dim_y) % 2 == 1) &&
-			   ((extended_image_dim_y + g_cpt_dim_y) % sc::low_to_high_spatial_resolution == 0)));
-	extended_image_dim_y = extended_image_dim_y + g_cpt_dim_y;
-	debug_printf(LVL_INFO, "Input image resolution:    %dx%d\n", image_dim_y, image_dim_x);
+	debug_printf(LVL_INFO, "Input image resolution:    %dx%d\n", sc::IMGHEIGHT, sc::IMGWIDTH);
 	debug_printf(LVL_INFO, "Extended image resolution: %dx%d\n", extended_image_dim_y, extended_image_dim_x);
 
 	//# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -458,21 +417,18 @@ void calculatePSF(int channel)
 	//#
 	//#  First create an array with of size of the image which contains the distance to the Gaussian image in the focal
 	//#  plane in micrometer
-	//# pix_coordinate=fltarr(2*image_dim_x-1, 2* image_dim_y-1,2)
-	//# pix_coordinate[*,*,0]=indgen(2* image_dim_x-1)#transpose(intarr(2* image_dim_y-1)+1)
-	//# pix_coordinate[*,*,1]=transpose(indgen(2*image_dim_y-1)#transpose((intarr(2*image_dim_x-1)+1)))
-	//# radius=sqrt((pix_coordinate[*,*,0]-image_dim_x+1)^2+(pix_coordinate[*,*,1]-image_dim_y+1)^2)
+	//# pix_coordinate=fltarr(2*sc::IMGWIDTH-1, 2* sc::IMGHEIGHT-1,2)
+	//# pix_coordinate[*,*,0]=indgen(2* sc::IMGWIDTH-1)#transpose(intarr(2* sc::IMGHEIGHT-1)+1)
+	//# pix_coordinate[*,*,1]=transpose(indgen(2*sc::IMGHEIGHT-1)#transpose((intarr(2*sc::IMGWIDTH-1)+1)))
+	//# radius=sqrt((pix_coordinate[*,*,0]-sc::IMGWIDTH+1)^2+(pix_coordinate[*,*,1]-sc::IMGHEIGHT+1)^2)
 
 	std::vector<Matrix2D> pix_coordinate;
 	pix_coordinate.emplace_back(extended_image_dim_y, extended_image_dim_x);
 	pix_coordinate.emplace_back(extended_image_dim_y, extended_image_dim_x);
-
-	for (int i = 0; i < extended_image_dim_y; ++i) {
-		for (int j = 0; j < extended_image_dim_x; ++j) {
-			pix_coordinate[0](i, j) = j;
-			pix_coordinate[1](i, j) = i;
-		}
-	}
+	std::generate(std::begin(pix_coordinate[0].m_data), std::end(pix_coordinate[0].m_data),
+				  [counter = 0]() mutable { return counter % extended_image_dim_x; });
+	std::generate(std::begin(pix_coordinate[1].m_data), std::end(pix_coordinate[1].m_data),
+				  [counter = 0]() mutable { return counter / extended_image_dim_x; });
 
 	/*emitStateDuration(6);
 	for (int i = 0; i < extended_image_dim_y; ++i) {
@@ -488,8 +444,8 @@ void calculatePSF(int channel)
 	for (int i = 0; i < extended_image_dim_y; ++i) {
 		for (int j = 0; j < extended_image_dim_x; ++j) {
 			//#  Multiply by the detector size
-			radius(i, j) = detector_size * sqrt(pow((pix_coordinate[0])(i, j) - extended_image_dim_x / 2, 2) +
-												pow((pix_coordinate[1])(i, j) - extended_image_dim_y / 2, 2));
+			radius(i, j) = detector_size * sqrt(pow(pix_coordinate[0](i, j) - extended_image_dim_x / 2, 2) +
+												pow(pix_coordinate[1](i, j) - extended_image_dim_y / 2, 2));
 		}
 		//dumpVector(66, radius[i]);
 	}
@@ -500,7 +456,7 @@ void calculatePSF(int channel)
 	PointSpreadFunction::harvey(psf_mirror_harvey, radius, channel, true);
 	auto end = std::chrono::steady_clock::now();
 
-	std::cout << "PSF took:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "us." << std::endl;
+	std::cout << "PSF took:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms." << std::endl;
 
 	/*emitStateDuration(7);
 	for (int i = 0; i < extended_image_dim_y; ++i) {
@@ -547,18 +503,17 @@ void calculatePSF(int channel)
 	//#  Define the high res psf
 #ifndef USE_PSFCACHE
 	// if caching is not desired, reset each time
-	if (!g_psf_high_res) {
-		delete g_psf_high_res;
-		g_psf_high_res = NULL;
+	if (!psf_high_res) {
+		deletepsf_high_res;
+		psf_high_res = NULL;
 	}
 #endif
-	if (!g_psf_high_res) {
-		g_psf_high_res = new m2dSpecialPSF(g_psf_extent, g_psf_extent);
+	if (!psf_high_res) {
+		psf_high_res = new m2dSpecialPSF(psf_extent, psf_extent);
 	}
-	for (int i = 0; i < g_psf_extent; ++i) {
-		for (int j = 0; j < g_psf_extent; ++j) {
-			(*g_psf_high_res)(i, j) = psf_totale((extended_image_dim_y - g_psf_extent) / 2 + i,
-												 (extended_image_dim_x - g_psf_extent) / 2 + j);
+	for (int i = 0; i < psf_extent; ++i) {
+		for (int j = 0; j < psf_extent; ++j) {
+			(*psf_high_res)(i, j) = psf_totale((extended_image_dim_y - psf_extent) / 2 + i, (extended_image_dim_x - psf_extent) / 2 + j);
 		}
 	}
 
@@ -566,16 +521,14 @@ void calculatePSF(int channel)
 	//#  Remove the high res part of the psf
 	//
 	//  ttsiodras: avoid copying to new table by overwriting psf_totale - which is not reused below)
-	for (int i = 0; i < g_psf_extent; ++i) {
-		for (int j = 0; j < g_psf_extent; ++j) {
-			psf_totale((extended_image_dim_y - g_psf_extent) / 2 + i, (extended_image_dim_x - g_psf_extent) / 2 + j) = 0.;
+	for (int i = 0; i < psf_extent; ++i) {
+		for (int j = 0; j < psf_extent; ++j) {
+			psf_totale((extended_image_dim_y - psf_extent) / 2 + i, (extended_image_dim_x - psf_extent) / 2 + j) = 0.;
 		}
 	}
 	//#  Resize to low res
-	g_lowres_y = extended_image_dim_y / sc::low_to_high_spatial_resolution;
-	g_lowres_x = extended_image_dim_x / sc::low_to_high_spatial_resolution;
-	FFTWRealType* psf_low_res = (FFTWRealType*) FFTW_PREFIX(malloc)(sizeof(FFTWRealType) * g_lowres_y * g_lowres_x);
-	memset(psf_low_res, 0, sizeof(FFTWRealType) * g_lowres_y * g_lowres_x);
+	FFTWRealType* psf_low_res = (FFTWRealType*) FFTW_PREFIX(malloc)(sizeof(FFTWRealType) * lowres_y * lowres_x);
+	memset(psf_low_res, 0, sizeof(FFTWRealType) * lowres_y * lowres_x);
 
 	for (int i = 0; i < extended_image_dim_y; i += sc::low_to_high_spatial_resolution) {
 		for (int j = 0; j < extended_image_dim_x; j += sc::low_to_high_spatial_resolution) {
@@ -585,16 +538,16 @@ void calculatePSF(int channel)
 					total += psf_totale(i + k, j + l);
 				}
 			}
-			psf_low_res[g_lowres_x * (i / sc::low_to_high_spatial_resolution) + (j / sc::low_to_high_spatial_resolution)] =
+			psf_low_res[lowres_x * (i / sc::low_to_high_spatial_resolution) + (j / sc::low_to_high_spatial_resolution)] =
 					total / (sc::low_to_high_spatial_resolution * sc::low_to_high_spatial_resolution);
 		}
 	}
 
-	//for(int ii=0; ii<g_psf_extent; ii++)
-	//    dumpVector(92, channel, &(*g_psf_high_res)(ii, 0), g_psf_extent, true);
+	//for(int ii=0; ii<psf_extent; ii++)
+	//    dumpVector(92, channel, &(*psf_high_res)(ii, 0),psf_extent, true);
 
 	emitStateDuration(9);
-	dumpFloats(9, channel, g_lowres_y, g_lowres_x, psf_low_res);
+	dumpFloats(9, channel, lowres_y, lowres_x, psf_low_res);
 
 	// This following section was further below - I moved it here, since psf_low_res
 	// is computed only the first time - i.e. it is skipped over via the goto
@@ -605,16 +558,15 @@ void calculatePSF(int channel)
 	//#
 #ifndef USE_PSFCACHE
 	// if caching is not desired, reset each time
-	if (!g_fft_psf_low_res) {
-		FFTW_PREFIX(free)(g_fft_psf_low_res);
-		g_fft_psf_low_res = NULL;
+	if (!fft_psf_low_res) {
+		FFTW_PREFIX(free)(fft_psf_low_res);
+		fft_psf_low_res = NULL;
 	}
 #endif
-	if (!g_fft_psf_low_res) {
-		g_fft_psf_low_res = (FFTW_PREFIX(complex)*) FFTW_PREFIX(malloc)(sizeof(FFTW_PREFIX(complex)) * g_lowres_x * g_lowres_y);
+	if (!fft_psf_low_res) {
+		fft_psf_low_res = (FFTW_PREFIX(complex)*) FFTW_PREFIX(malloc)(sizeof(FFTW_PREFIX(complex)) * lowres_x * lowres_y);
 	}
-	FFTW_PREFIX(plan) psf_low_res_plan = FFTW_PREFIX(plan_dft_r2c_2d)(g_lowres_y, g_lowres_x, psf_low_res, g_fft_psf_low_res,
-																	  FFTW_ESTIMATE);
+	FFTW_PREFIX(plan) psf_low_res_plan = FFTW_PREFIX(plan_dft_r2c_2d)(lowres_y, lowres_x, psf_low_res, fft_psf_low_res, FFTW_ESTIMATE);
 	FFTW_PREFIX(execute)(psf_low_res_plan);
 	FFTW_PREFIX(destroy_plan)(psf_low_res_plan);
 
@@ -622,7 +574,7 @@ void calculatePSF(int channel)
 
 }
 
-void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matrix2D& input_image, int channel, bool logStages)
+void FMSPSFDR::forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matrix2D& input_image, int channel, bool logStages)
 {
 	emitStateDuration(0);
 
@@ -641,7 +593,7 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 		debug_printf(LVL_INFO, "Re-using PSF cache...\n");
 	}
 
-	if (image_dim_y != input_image.height || image_dim_x != input_image.width) {
+	if (sc::IMGHEIGHT != input_image.height || sc::IMGWIDTH != input_image.width) {
 		debug_printf(LVL_PANIC, "forward_model_single_psf_dual_resolution violated the contract!\n"
 								"It was called with input image size %dx%d instead of %dx%d - aborting...\n", input_image.width,
 					 input_image.height, sc::IMGWIDTH, sc::IMGHEIGHT);
@@ -649,23 +601,20 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 #endif // USE_PSFCACHE
 
 	//#  Apply ratio of normal to variable with incidence angle TIS to the input image
-	m2dSpecialImage input_image_corrected(image_dim_y, image_dim_x);
+	m2dSpecialImage input_image_corrected(sc::IMGHEIGHT, sc::IMGWIDTH);
 	input_image.clone(input_image_corrected);
-	for (int i_y = 0; i_y < image_dim_y; ++i_y) {
-		for (int j = 0; j < image_dim_x; ++j) {
-			input_image_corrected(i_y, j) *= g_correction_direct_peak[j];
-		}
-	}
+	std::for_each(std::begin(input_image_corrected.m_data), std::end(input_image_corrected.m_data),
+				  [counter = 0, this](auto& element) { element *= correction_direct_peak[counter % sc::IMGWIDTH]; });
 
 	//emitStateDuration(91);
-	//for(int i_y=0; i_y<image_dim_y; i_y++)
-	//    dumpVector(91, channel, input_image_corrected.getLine(i_y), image_dim_x);
+	//for(int i_y=0; i_y<sc::IMGHEIGHT; i_y++)
+	//    dumpVector(91, channel, input_image_corrected.getLine(i_y), sc::IMGWIDTH);
 
 	static Matrix2D input_extended_image(extended_image_dim_y, extended_image_dim_x);
 
-	for (int i = image_dim_y + g_cpt_dim_y / 2; i <= 2 * image_dim_y - 1 + g_cpt_dim_y / 2; ++i) {
-		for (int j = image_dim_x + g_cpt_dim_x / 2; j <= 2 * image_dim_x - 1 + g_cpt_dim_x / 2; ++j) {
-			input_extended_image(i, j) = input_image_corrected(i - image_dim_y - g_cpt_dim_y / 2, j - image_dim_x - g_cpt_dim_x / 2);
+	for (int i = sc::IMGHEIGHT + cpt_dim_y / 2; i <= 2 * sc::IMGHEIGHT - 1 + cpt_dim_y / 2; ++i) {
+		for (int j = sc::IMGWIDTH + cpt_dim_x / 2; j <= 2 * sc::IMGWIDTH - 1 + cpt_dim_x / 2; ++j) {
+			input_extended_image(i, j) = input_image_corrected(i - sc::IMGHEIGHT - cpt_dim_y / 2, j - sc::IMGWIDTH - cpt_dim_x / 2);
 		}
 	}
 
@@ -683,9 +632,9 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	//#  2) A low spatial convolution with the complementatry PSF at a lower spatial resolution
 	//#
 	//#  Compute the low res input image
-	FFTWRealType* low_res_input_extended_image = (FFTWRealType*) FFTW_PREFIX(malloc)(sizeof(FFTWRealType) * g_lowres_y * g_lowres_x);
-	//debug_printf(LVL_INFO, "Low resolution image:      %dx%d\n", g_lowres_y, g_lowres_x);
-	memset(low_res_input_extended_image, 0, sizeof(FFTWRealType) * g_lowres_y * g_lowres_x);
+	FFTWRealType* low_res_input_extended_image = (FFTWRealType*) FFTW_PREFIX(malloc)(sizeof(FFTWRealType) * lowres_y * lowres_x);
+	//debug_printf(LVL_INFO, "Low resolution image:      %dx%d\n",lowres_y,lowres_x);
+	memset(low_res_input_extended_image, 0, sizeof(FFTWRealType) * lowres_y * lowres_x);
 
 	for (int i = 0; i < extended_image_dim_y; i += sc::low_to_high_spatial_resolution) {
 		for (int j = 0; j < extended_image_dim_x; j += sc::low_to_high_spatial_resolution) {
@@ -695,12 +644,12 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 					total += input_extended_image(i + k, j + l);
 				}
 			}
-			low_res_input_extended_image[g_lowres_x * (i / sc::low_to_high_spatial_resolution) + j / sc::low_to_high_spatial_resolution] =
+			low_res_input_extended_image[lowres_x * (i / sc::low_to_high_spatial_resolution) + j / sc::low_to_high_spatial_resolution] =
 					total / (sc::low_to_high_spatial_resolution * sc::low_to_high_spatial_resolution);
 		}
 	}
 
-	//dumpFloats(85, channel, g_lowres_y, g_lowres_x, low_res_input_extended_image, false);
+	//dumpFloats(85, channel,lowres_y,lowres_x, low_res_input_extended_image, false);
 	//emitStateDuration(93);
 
 	//# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -709,8 +658,8 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	//#  Convolution of the high res psf with the high repeating the values at the edge of the image
 	//#  Here an important assumption is that there is not signal outside the strict field of view of the input image
 
-	int inY = image_dim_y;
-	int inX = image_dim_x;
+	int inY = sc::IMGHEIGHT;
+	int inX = sc::IMGWIDTH;
 	if (inX != sc::IMGWIDTH || inY != sc::IMGHEIGHT) {
 		debug_printf(LVL_PANIC, "forward_model_single_psf_dual_resolution violated the contract!\n"
 								"It ends up with an input image of %dx%d instead of %dx%d! Aborting...\n", inX, inY, sc::IMGWIDTH,
@@ -718,8 +667,8 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	}
 
 	// Using constants instead of kX and kY causes tremendous speed difference - due to loop unrolling!
-	int kY = g_psf_extent;
-	int kX = g_psf_extent;
+	int kY = psf_extent;
+	int kX = psf_extent;
 	if (kX != sc::KERNEL_SIZE || kY != sc::KERNEL_SIZE) {
 		debug_printf(LVL_PANIC, "forward_model_single_psf_dual_resolution violated the contract!\n"
 								"It ends up with a pfs_high_res of %dx%d instead of %dx%d! Aborting...\n", kX, kY, sc::KERNEL_SIZE,
@@ -745,7 +694,7 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 					ofsY -= inY;
 				}
 				fp* input_image_corrected_line = &input_image_corrected.getLine(ofsY);
-				fp* psf_high_res_line = &g_psf_high_res->getLine(k);
+				fp* psf_high_res_line = &psf_high_res->getLine(k);
 				for (int l = 0; l < kX; ++l) {
 					int ofsX = j + l;
 					//if (ofsX>=inX) ofsX -= inX;
@@ -778,41 +727,45 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	//# low_res_extended_output_image=fft(fft_psf_low_res*fft_image_low_res, /inverse)
 
 	FFTW_PREFIX(complex)* fft_image_low_res = (FFTW_PREFIX(complex)*) FFTW_PREFIX(malloc)(
-			sizeof(FFTW_PREFIX(complex)) * g_lowres_x * g_lowres_y);
-	FFTW_PREFIX(plan) low_res_input_extended_image_plan = FFTW_PREFIX(plan_dft_r2c_2d)(g_lowres_y, g_lowres_x, low_res_input_extended_image,
+			sizeof(FFTW_PREFIX(complex)) * lowres_x * lowres_y);
+	FFTW_PREFIX(plan) low_res_input_extended_image_plan = FFTW_PREFIX(plan_dft_r2c_2d)(lowres_y, lowres_x, low_res_input_extended_image,
 																					   fft_image_low_res, FFTW_ESTIMATE);
 	FFTW_PREFIX(execute)(low_res_input_extended_image_plan);
 
-	int span = (1 + g_lowres_x) / 2;
-	auto* revfft_psf_low_res = (FFTW_PREFIX(complex)*) FFTW_PREFIX(malloc)(sizeof(FFTW_PREFIX(complex)) * g_lowres_x * g_lowres_y);
+	int span = (1 + lowres_x) / 2;
+	auto* revfft_psf_low_res = (FFTW_PREFIX(complex)*) FFTW_PREFIX(malloc)(sizeof(FFTW_PREFIX(complex)) * lowres_x * lowres_y);
 
-	for (int i = 0; i < g_lowres_y; ++i) {
+	for (int i = 0; i < lowres_y; ++i) {
 		for (int j = 0; j < span; ++j) {
-			fp re1 = g_fft_psf_low_res[i * span + j][0];
-			fp im1 = g_fft_psf_low_res[i * span + j][1];
+			fp re1 = fft_psf_low_res[i * span + j][0];
+			fp im1 = fft_psf_low_res[i * span + j][1];
 			fp re2 = fft_image_low_res[i * span + j][0];
 			fp im2 = fft_image_low_res[i * span + j][1];
 			revfft_psf_low_res[i * span + j][0] = re1 * re2 - im1 * im2;
+			revfft_psf_low_res[i * span + j][0] /= lowres_x * lowres_y;
+			revfft_psf_low_res[i * span + j][0] /= lowres_x * lowres_y;
+
 			revfft_psf_low_res[i * span + j][1] = re1 * im2 + re2 * im1;
-			revfft_psf_low_res[i * span + j][0] /= g_lowres_x * g_lowres_y;
-			revfft_psf_low_res[i * span + j][1] /= g_lowres_x * g_lowres_y;
-			revfft_psf_low_res[i * span + j][0] /= g_lowres_x * g_lowres_y;
-			revfft_psf_low_res[i * span + j][1] /= g_lowres_x * g_lowres_y;
+			revfft_psf_low_res[i * span + j][1] /= lowres_x * lowres_y;
+			revfft_psf_low_res[i * span + j][1] /= lowres_x * lowres_y;
 		}
 	}
-	auto* low_res_extended_output_image = (FFTWRealType*) FFTW_PREFIX(malloc)(sizeof(FFTWRealType) * g_lowres_y * g_lowres_x);
-	FFTW_PREFIX(plan) low_res_extended_output_image_plan = FFTW_PREFIX(plan_dft_c2r_2d)(g_lowres_y, g_lowres_x, revfft_psf_low_res,
+	auto* low_res_extended_output_image = (FFTWRealType*) FFTW_PREFIX(malloc)(sizeof(FFTWRealType) * lowres_y * lowres_x);
+	FFTW_PREFIX(plan) low_res_extended_output_image_plan = FFTW_PREFIX(plan_dft_c2r_2d)(lowres_y, lowres_x, revfft_psf_low_res,
 																						low_res_extended_output_image, FFTW_ESTIMATE);
 	FFTW_PREFIX(execute)(low_res_extended_output_image_plan);
 
-	for (int i = 0; i < g_lowres_y * g_lowres_x; ++i) {
+	//	std::for_each(low_res_extended_output_image, low_res_extended_output_image + sizeof(FFTWRealType) * lowres_y * lowres_x,
+	//				  [](auto& element) { element = std::abs(element) * (lowres_y * lowres_x); });
+
+	for (int i = 0; i < lowres_y * lowres_x; ++i) {
 		// Thanassis, stop hacking stuff:
 		//*p++ &= 0x7FFFFFFF; // fast single-precision absolute value
-		low_res_extended_output_image[i] = fabs(low_res_extended_output_image[i]) * (g_lowres_y * g_lowres_x);
+		low_res_extended_output_image[i] = fabs(low_res_extended_output_image[i]) * (lowres_y * lowres_x);
 	}
 
 	emitStateDuration(11);
-	dumpFloats(11, channel, g_lowres_y, g_lowres_x, low_res_extended_output_image, false);
+	dumpFloats(11, channel, lowres_y, lowres_x, low_res_extended_output_image, false);
 
 	FFTW_PREFIX(destroy_plan)(low_res_extended_output_image_plan);
 	FFTW_PREFIX(destroy_plan)(low_res_input_extended_image_plan);
@@ -825,19 +778,19 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 
 	//# low_res_extended_output_image= shift(low_res_extended_output_image,extended_image_dim_x/2/sc::low_to_high_spatial_resolution+1,extended_image_dim_y/2/sc::low_to_high_spatial_resolution+1 )
 
-	Matrix2D low_res_extended_output_image_shifted(g_lowres_y, g_lowres_x);
+	Matrix2D low_res_extended_output_image_shifted(lowres_y, lowres_x);
 
-	for (int i = 0; i < g_lowres_y; ++i) {
-		for (int j = 0; j < g_lowres_x; ++j) {
-			unsigned in = (i + extended_image_dim_y / 2 / sc::low_to_high_spatial_resolution + 1) % g_lowres_y;
-			unsigned jn = (j + extended_image_dim_x / 2 / sc::low_to_high_spatial_resolution + 1) % g_lowres_x;
-			low_res_extended_output_image_shifted(in, jn) = low_res_extended_output_image[g_lowres_x * i + j];
+	for (int i = 0; i < lowres_y; ++i) {
+		for (int j = 0; j < lowres_x; ++j) {
+			const auto in = (i + extended_image_dim_y / 2 / sc::low_to_high_spatial_resolution + 1) % lowres_y;
+			const auto jn = (j + extended_image_dim_x / 2 / sc::low_to_high_spatial_resolution + 1) % lowres_x;
+			low_res_extended_output_image_shifted(in, jn) = low_res_extended_output_image[lowres_x * i + j];
 		}
 	}
 	FFTW_PREFIX(free)(low_res_extended_output_image);  // no longer needed
 
 	//emitStateDuration(122);
-	//dumpFloats(122, channel, g_lowres_y, g_lowres_x, low_res_extended_output_image_shifted._pData);
+	//dumpFloats(122, channel,lowres_y,lowres_x, low_res_extended_output_image_shifted._pData);
 
 	//#  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	//#   Regridding of the low res output to a high res output size
@@ -853,15 +806,15 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	// This port of congrid works only for odd input and output sizes
 	assert(1 == (extended_image_dim_y & 1));
 	assert(1 == (extended_image_dim_x & 1));
-	assert(1 == (g_lowres_x & 1));
-	assert(1 == (g_lowres_y & 1));
+	assert(1 == (lowres_x & 1));
+	assert(1 == (lowres_y & 1));
 
-	int ileny = g_lowres_y;
+	int ileny = lowres_y;
 	int oleny = extended_image_dim_y;
 	double stepy = ileny;
 	stepy /= oleny;
 
-	int ilenx = g_lowres_x;
+	int ilenx = lowres_x;
 	int olenx = extended_image_dim_x;
 	double stepx = ilenx;
 	stepx /= olenx;
@@ -872,7 +825,7 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	Matrix2D& inp = low_res_extended_output_image_shifted;
 
 	//for(int i=0; i<extended_image_dim_y; ++i) {
-	for (int i = g_cpt_dim_y / 2 + image_dim_y; i < g_cpt_dim_y / 2 + 2 * image_dim_y; ++i) {
+	for (int i = cpt_dim_y / 2 + sc::IMGHEIGHT; i < cpt_dim_y / 2 + 2 * sc::IMGHEIGHT; ++i) {
 
 		startIdxY = ileny / 2 - stepy * (oleny / 2) + i * stepy;
 
@@ -897,19 +850,19 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 			// Obvious optimization: the code below only reads from
 			// a central square inside low_res_extended_output_image_linterp:
 			//
-			//  for(int i=0; i<image_dim_y; ++i) {
-			//      for(int j=0; j<image_dim_x; ++j) {
+			//  for(int i=0; i<sc::IMGHEIGHT; ++i) {
+			//      for(int j=0; j<sc::IMGWIDTH; ++j) {
 			//
 			//      ... read from low_res_extended_output_image_linterp(
-			//          i+image_dim_y+g_cpt_dim_y/2,
-			//          j+image_dim_x+g_cpt_dim_x/2)
+			//          i+sc::IMGHEIGHT+cpt_dim_y/2,
+			//          j+sc::IMGWIDTH+cpt_dim_x/2)
 			//
 			// ... so naturally, we skip over interpolating for these areas!
-			if (j < g_cpt_dim_x / 2 + image_dim_x) {
+			if (j < cpt_dim_x / 2 + sc::IMGWIDTH) {
 				startIdxX += stepx;
 				continue;
 			}
-			if (j > g_cpt_dim_x / 2 + 2 * image_dim_x) {
+			if (j > cpt_dim_x / 2 + 2 * sc::IMGWIDTH) {
 				break;
 			}
 
@@ -945,40 +898,29 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 	dumpFloats(12, channel, extended_image_dim_y, extended_image_dim_x, low_res_extended_output_image_linterp._pData, false);
 */
 	//#   Add the two componemts
-	//# low_res_output_image=low_res_extended_output_image[image_dim_x+g_cpt_dim_x/2:2*image_dim_x-1+g_cpt_dim_x/2,image_dim_y+g_cpt_dim_y/2:2*image_dim_y-1+g_cpt_dim_y/2]
+	//# low_res_output_image=low_res_extended_output_image[sc::IMGWIDTH+cpt_dim_x/2:2*sc::IMGWIDTH-1+cpt_dim_x/2,sc::IMGHEIGHT+cpt_dim_y/2:2*sc::IMGHEIGHT-1+cpt_dim_y/2]
 	//# output_image=low_res_output_image+high_res_output_image
 
-	for (int i = 0; i < image_dim_y; ++i) {
-		for (int j = 0; j < image_dim_x; ++j) {
-			output_image(i, j) = high_res_output_image(i, j) + low_res_extended_output_image_linterp(i + image_dim_y + g_cpt_dim_y / 2,
-																									 j + image_dim_x + g_cpt_dim_x / 2);
+	for (int i = 0; i < sc::IMGHEIGHT; ++i) {
+		for (int j = 0; j < sc::IMGWIDTH; ++j) {
+			output_image(i, j) = high_res_output_image(i, j) +
+								 low_res_extended_output_image_linterp(i + sc::IMGHEIGHT + cpt_dim_y / 2, j + sc::IMGWIDTH + cpt_dim_x / 2);
 		}
 	}
 
 	//emitStateDuration(125);
-	//dumpFloats(125, channel, image_dim_y, image_dim_x, output_image._pData, false);
+	//dumpFloats(125, channel, sc::IMGHEIGHT, sc::IMGWIDTH, output_image._pData, false);
 
 	//#  Add the pupil stop contribution
 	//#  output_image=output_image+total(input_image)*pupil_stop
-	double total = 0.;
-
-	for (int i_y = 0; i_y < image_dim_y; ++i_y) {
-		for (int j = 0; j < image_dim_x; ++j) {
-			total += input_image(i_y, j);
-		}
-	}
-
+	double total = input_image.m_data.sum();
 	total *= sc::pupil_stop;
 
-	for (int i = 0; i < image_dim_y; ++i) {
-		for (int j = 0; j < image_dim_x; ++j) {
-			output_image(i, j) += total;
-		}
-	}
+	output_image.m_data += total;
 
 	/*emitStateDuration(13);
 	if (logStages) {
-		dumpFloats(13, channel, image_dim_y, image_dim_x, output_image._pData, false);
+		dumpFloats(13, channel, sc::IMGHEIGHT, sc::IMGWIDTH, output_image._pData, false);
 	}*/
 
 	if (channel == 4) {
@@ -992,12 +934,12 @@ void forward_model_single_psf_dual_resolution(Matrix2D& output_image, const Matr
 		//#    size_swir_ghost=size(psf_swir_ghost)
 		//#
 		//#    ; Crop the psf if the image is smaller that the psf
-		//#    if (image_dim_x lt size_swir_ghost[1]) then begin
-		//#      psf_swir_ghost=psf_swir_ghost[size_swir_ghost[1]/2-image_dim_x/2+1:size_swir_ghost[1]/2+image_dim_x/2-1, *]
+		//#    if (sc::IMGWIDTH lt size_swir_ghost[1]) then begin
+		//#      psf_swir_ghost=psf_swir_ghost[size_swir_ghost[1]/2-sc::IMGWIDTH/2+1:size_swir_ghost[1]/2+sc::IMGWIDTH/2-1, *]
 		//#    endif
 		//#
-		//#    if (image_dim_y lt size_swir_ghost[2]) then begin
-		//#      psf_swir_ghost=psf_swir_ghost[*, size_swir_ghost[2]/2-image_dim_y/2+1:size_swir_ghost[2]/2+image_dim_y/2-1]
+		//#    if (sc::IMGHEIGHT lt size_swir_ghost[2]) then begin
+		//#      psf_swir_ghost=psf_swir_ghost[*, size_swir_ghost[2]/2-sc::IMGHEIGHT/2+1:size_swir_ghost[2]/2+sc::IMGHEIGHT/2-1]
 		//#    endif
 		//#    ;output_image=convol(output_image, psf_swir_ghost, 1, /edge_zero)
 		//#    output_image=convol(output_image, psf_swir_ghost, 1, /edge_wrap)
